@@ -1,6 +1,22 @@
 function validateTreeStructure(nodes, connections) {
+    // 入力検証
+    if (!nodes || !Array.isArray(nodes)) {
+        return {
+            isValid: false,
+            errors: ['Invalid nodes: must be an array'],
+            backEdges: []
+        };
+    }
+    if (!connections || !Array.isArray(connections)) {
+        return {
+            isValid: false,
+            errors: ['Invalid connections: must be an array'],
+            backEdges: []
+        };
+    }
+
     const errors = [];
-    const backEdges = []; // サイクルを引き起こすエッジ
+    const backEdges = [];
 
     // Mermaidの点線エッジは自動的にバックエッジとして扱う
     const dashedEdges = connections.filter(conn => conn.isDashed);
@@ -11,47 +27,42 @@ function validateTreeStructure(nodes, connections) {
 
     // 子ノードマップを構築（通常のエッジのみ）
     const childrenMap = new Map();
-    nodes.forEach(node => childrenMap.set(node.id, []));
+    nodes.forEach(node => {
+        if (node && node.id !== undefined) {
+            childrenMap.set(node.id, []);
+        }
+    });
     regularConnections.forEach(conn => {
-        if (childrenMap.has(conn.from)) {
+        if (conn && conn.from !== undefined && childrenMap.has(conn.from)) {
             childrenMap.get(conn.from).push(conn.to);
         }
     });
 
-    // 各エッジについて、そのエッジを除外して to から from に到達可能かチェック
-    // 到達可能なら、そのエッジはバックエッジ（サイクルを形成）
-    function canReach(from, to, excludeEdge) {
-        const visited = new Set();
-        const queue = [from];
+    // DFS方式でバックエッジを検出
+    const visited = new Set();
+    const recStack = new Set();
 
-        while (queue.length > 0) {
-            const current = queue.shift();
-            if (current === to) {
-                return true;
-            }
-            if (visited.has(current)) {
-                continue;
-            }
-            visited.add(current);
+    function dfs(nodeId) {
+        visited.add(nodeId);
+        recStack.add(nodeId);
 
-            const children = childrenMap.get(current) || [];
-            for (const childId of children) {
-                // excludeEdgeを除外
-                if (current === excludeEdge.from && childId === excludeEdge.to) {
-                    continue;
-                }
-                queue.push(childId);
+        const children = childrenMap.get(nodeId) || [];
+        for (const childId of children) {
+            if (recStack.has(childId)) {
+                // 訪問中のノードへのエッジ = バックエッジ
+                backEdges.push({ from: nodeId, to: childId });
+            } else if (!visited.has(childId)) {
+                dfs(childId);
             }
         }
 
-        return false;
+        recStack.delete(nodeId);
     }
 
-    // 通常のエッジについてのみバックエッジかチェック（点線エッジは既に除外済み）
-    regularConnections.forEach(edge => {
-        // edge.to から edge.from に（このエッジを除いて）到達できるか？
-        if (canReach(edge.to, edge.from, edge)) {
-            backEdges.push({ from: edge.from, to: edge.to });
+    // 全ノードから開始（複数ルートに対応）
+    nodes.forEach(node => {
+        if (node && node.id !== undefined && !visited.has(node.id)) {
+            dfs(node.id);
         }
     });
 
