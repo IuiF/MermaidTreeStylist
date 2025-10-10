@@ -190,6 +190,85 @@ function getVerticalLayout() {
 
             // resolveEdgeNodeCollisions(); // 一旦無効化
 
+            // 点線ノード専用のエッジ衝突回避
+            // 点線ノードは通常エッジ（connections）のみを考慮し、点線エッジは無視
+            function resolveDashedNodeEdgeCollisions() {
+                const maxIterations = 5;
+                const collisionMargin = 20;
+
+                for (let iteration = 0; iteration < maxIterations; iteration++) {
+                    let hasCollision = false;
+
+                    // 点線ノードのみを対象
+                    treeStructure.levels.forEach((level, levelIndex) => {
+                        level.forEach(node => {
+                            // 点線ノードかチェック
+                            const element = document.getElementById(node.id);
+                            if (!element || !element.classList.contains('dashed-node')) return;
+
+                            const nodePos = nodePositions.get(node.id);
+                            if (!nodePos) return;
+
+                            // 通常エッジのみを対象（点線エッジは無視）
+                            connections.forEach(conn => {
+                                // 点線エッジはスキップ
+                                if (conn.isDashed) return;
+                                const fromPos = nodePositions.get(conn.from);
+                                const toPos = nodePositions.get(conn.to);
+
+                                if (!fromPos || !toPos) return;
+
+                                // 始点と終点の階層を取得
+                                let fromLevel = -1, toLevel = -1;
+                                treeStructure.levels.forEach((lvl, idx) => {
+                                    if (lvl.some(n => n.id === conn.from)) fromLevel = idx;
+                                    if (lvl.some(n => n.id === conn.to)) toLevel = idx;
+                                });
+
+                                // このノードがfromとtoの間の階層にあるかチェック
+                                if (fromLevel === -1 || toLevel === -1 || fromLevel >= levelIndex || toLevel <= levelIndex) return;
+
+                                // 長距離エッジ（階層差が3以上）は除外：大きなシフトを防ぐ
+                                const levelSpan = toLevel - fromLevel;
+                                if (levelSpan >= 3) return;
+
+                                // エッジの経路のX座標範囲を計算
+                                const edgeMinX = Math.min(fromPos.x, toPos.x);
+                                const edgeMaxX = Math.max(fromPos.x + fromPos.width, toPos.x + toPos.width);
+
+                                // エッジの水平線のY座標範囲を概算
+                                const horizontalLineMinY = fromPos.y;
+                                const horizontalLineMaxY = toPos.y;
+
+                                // ノードとの重なりをチェック
+                                const nodeLeft = nodePos.x - collisionMargin;
+                                const nodeRight = nodePos.x + nodePos.width + collisionMargin;
+                                const xOverlap = nodeLeft < edgeMaxX && nodeRight > edgeMinX;
+
+                                const nodeTop = nodePos.y - collisionMargin;
+                                const nodeBottom = nodePos.y + nodePos.height + collisionMargin;
+                                const yOverlap = !(horizontalLineMaxY < nodeTop || horizontalLineMinY > nodeBottom);
+
+                                if (xOverlap && yOverlap) {
+                                    // 衝突検出：点線ノードを右にシフト
+                                    const shiftAmount = edgeMaxX - nodeLeft + baseSpacing;
+                                    if (window.DEBUG_CONNECTIONS) {
+                                        console.log('[DashedNodeEdgeCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to edge ' + conn.from + '->' + conn.to);
+                                    }
+                                    nodePos.x += shiftAmount;
+                                    setNodePosition(element, nodePos.x, nodePos.y);
+                                    hasCollision = true;
+                                }
+                            });
+                        });
+                    });
+
+                    if (!hasCollision) break;
+                }
+            }
+
+            resolveDashedNodeEdgeCollisions();
+
             // 同じ階層内のノード同士の重なりを解消
             function resolveSameLevelCollisions() {
                 treeStructure.levels.forEach((level, levelIndex) => {
