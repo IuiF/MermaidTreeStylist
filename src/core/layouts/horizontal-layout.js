@@ -2,6 +2,10 @@ function getHorizontalLayout() {
     return `
         function horizontalLayout(nodes, connections, calculateAllNodeWidths, analyzeTreeStructure) {
             const container = document.getElementById('treeContainer');
+            if (!container) {
+                console.error('treeContainer element not found');
+                return new Map();
+            }
             let containerHeight = Math.max(800, container.clientHeight || 800);
 
             const nodeWidthMap = calculateAllNodeWidths(nodes);
@@ -408,18 +412,21 @@ function getHorizontalLayout() {
 
             resolveNodeLabelCollisions();
 
-            const maxY = Math.max(...Array.from(nodePositions.values()).map(pos => pos.y + pos.height));
-            const maxX = Math.max(...Array.from(nodePositions.values()).map(pos => pos.x + pos.width));
+            // コンテナサイズ調整（nodePositionsが空でない場合のみ）
+            if (nodePositions.size > 0) {
+                const maxY = Math.max(...Array.from(nodePositions.values()).map(pos => pos.y + pos.height));
+                const maxX = Math.max(...Array.from(nodePositions.values()).map(pos => pos.x + pos.width));
 
-            if (maxY + 100 > containerHeight) {
-                containerHeight = maxY + 100;
-                container.style.height = containerHeight + 'px';
-            }
+                if (maxY + 100 > containerHeight) {
+                    containerHeight = maxY + 100;
+                    container.style.height = containerHeight + 'px';
+                }
 
-            let containerWidth = Math.max(800, container.clientWidth || 800);
-            if (maxX + 100 > containerWidth) {
-                containerWidth = maxX + 100;
-                container.style.width = containerWidth + 'px';
+                let containerWidth = Math.max(800, container.clientWidth || 800);
+                if (maxX + 100 > containerWidth) {
+                    containerWidth = maxX + 100;
+                    container.style.width = containerWidth + 'px';
+                }
             }
 
             // 階層情報をグローバルに保存（エッジレンダラーで使用）

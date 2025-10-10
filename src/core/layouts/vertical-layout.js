@@ -2,6 +2,10 @@ function getVerticalLayout() {
     return `
         function verticalLayout(nodes, connections, calculateAllNodeWidths, analyzeTreeStructure) {
             const container = document.getElementById('treeContainer');
+            if (!container) {
+                console.error('treeContainer element not found');
+                return new Map();
+            }
             let containerWidth = Math.max(800, container.clientWidth || 800);
 
             const nodeWidthMap = calculateAllNodeWidths(nodes);

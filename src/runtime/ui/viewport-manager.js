@@ -147,6 +147,10 @@ function getViewportManager() {
 
             init: function() {
                 const container = document.getElementById('treeContainer');
+                if (!container) {
+                    console.error('treeContainer element not found');
+                    return;
+                }
 
                 // ホイールイベント
                 container.addEventListener('wheel', (e) => {
