@@ -56,15 +56,15 @@ function getVerticalLayout() {
                 const y = levelYPositions[levelIndex];
 
                 if (levelIndex === 0) {
-                    let currentX = leftMargin;
+                    let currentY = y;
                     level.forEach(node => {
                         const element = document.getElementById(node.id);
                         if (element && !element.classList.contains('hidden')) {
-                            setNodePosition(element, currentX, y);
+                            setNodePosition(element, leftMargin, currentY);
                             const dimensions = svgHelpers.getNodeDimensions(element);
-                            nodePositions.set(node.id, { x: currentX, y: y, width: dimensions.width });
+                            nodePositions.set(node.id, { x: leftMargin, y: currentY, width: dimensions.width, height: dimensions.height });
                             const nodeSpacing = calculateNodeSpacing(node.id, connections, true);
-                            currentX += dimensions.width + nodeSpacing;
+                            currentY += dimensions.height + nodeSpacing;
                         }
                     });
                 } else {
@@ -307,21 +307,32 @@ function getVerticalLayout() {
                         const nextLeft = next.pos.x;
                         const nodeSpacing = calculateNodeSpacing(next.node.id, connections, true);
 
-                        // 重なりまたは間隔不足をチェック
+                        // X座標の重なりをチェック
                         if (currentRight + nodeSpacing > nextLeft) {
-                            const shiftAmount = currentRight + nodeSpacing - nextLeft;
-                            next.pos.x += shiftAmount;
-                            const element = document.getElementById(next.node.id);
-                            if (element) {
-                                setNodePosition(element, next.pos.x, next.pos.y);
-                            }
+                            // Y座標の重なりもチェック
+                            const currentTop = current.pos.y;
+                            const currentBottom = current.pos.y + (current.pos.height || 0);
+                            const nextTop = next.pos.y;
+                            const nextBottom = next.pos.y + (next.pos.height || 0);
 
-                            // 後続のノードも全て同じ量だけシフト
-                            for (let j = i + 2; j < levelNodes.length; j++) {
-                                levelNodes[j].pos.x += shiftAmount;
-                                const elem = document.getElementById(levelNodes[j].node.id);
-                                if (elem) {
-                                    setNodePosition(elem, levelNodes[j].pos.x, levelNodes[j].pos.y);
+                            const yOverlap = !(currentBottom < nextTop || currentTop > nextBottom);
+
+                            // Y座標が重なる場合のみシフト
+                            if (yOverlap) {
+                                const shiftAmount = currentRight + nodeSpacing - nextLeft;
+                                next.pos.x += shiftAmount;
+                                const element = document.getElementById(next.node.id);
+                                if (element) {
+                                    setNodePosition(element, next.pos.x, next.pos.y);
+                                }
+
+                                // 後続のノードも全て同じ量だけシフト
+                                for (let j = i + 2; j < levelNodes.length; j++) {
+                                    levelNodes[j].pos.x += shiftAmount;
+                                    const elem = document.getElementById(levelNodes[j].node.id);
+                                    if (elem) {
+                                        setNodePosition(elem, levelNodes[j].pos.x, levelNodes[j].pos.y);
+                                    }
                                 }
                             }
                         }
