@@ -111,7 +111,6 @@ function getViewportManager() {
 
                 if (hasRecentX && hasRecentY && !this.diagonalUnlocked) {
                     this.diagonalUnlocked = true;
-                    console.log('Diagonal mode unlocked!');
                 }
 
                 // 有効なデルタ値を記録
@@ -131,10 +130,8 @@ function getViewportManager() {
 
                         if (Math.abs(deltaX) < threshold && Math.abs(deltaY) > threshold) {
                             deltaX = deltaY * ratio * Math.sign(this.lastValidDeltaX);
-                            console.log(\`Compensating X: \${deltaX}\`);
                         } else if (Math.abs(deltaY) < threshold && Math.abs(deltaX) > threshold) {
                             deltaY = deltaX / ratio * Math.sign(this.lastValidDeltaY);
-                            console.log(\`Compensating Y: \${deltaY}\`);
                         }
                     }
                 }

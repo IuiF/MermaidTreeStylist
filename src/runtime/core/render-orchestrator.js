@@ -16,29 +16,18 @@ function getRenderOrchestrator() {
          * すべての描画処理をこの関数から順序立てて実行する
          */
         function initializeAndRender() {
-            console.log('[Render] Starting render process...');
-
             // フェーズ1: ノード作成
-            console.log('[Render] Phase 1: Creating SVG nodes');
             createSVGNodes();
 
             // フェーズ2: マネージャー初期化
-            console.log('[Render] Phase 2: Initializing managers');
             initializeManagers();
 
             // フェーズ3-5: レイアウト計算と描画（非同期）
             // DOMの準備が完了してから実行
             requestAnimationFrame(() => {
-                console.log('[Render] Phase 3: Computing layout');
                 const nodePositions = computeLayout();
-
-                console.log('[Render] Phase 4: Rendering connections and labels');
                 renderConnections(nodePositions);
-
-                console.log('[Render] Phase 5: Final adjustments');
                 applyFinalAdjustments();
-
-                console.log('[Render] Render process completed');
             });
         }
 
