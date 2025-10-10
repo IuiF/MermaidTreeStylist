@@ -311,6 +311,107 @@ function getVerticalLayout() {
 
             resolveSameLevelCollisions();
 
+            // ノードとエッジラベルの衝突を検出して回避
+            // ラベルの予想位置を計算してノードとの衝突をチェック
+            function resolveNodeLabelCollisions() {
+                const maxIterations = 5;
+                const collisionMargin = 5;
+                const estimatedLabelHeight = 20;
+                const labelVerticalSpacing = 10;
+                const labelTopMargin = 5;
+
+                for (let iteration = 0; iteration < maxIterations; iteration++) {
+                    let hasCollision = false;
+
+                    // 各ターゲットノードへのラベル数をカウント
+                    const labelCountByTarget = {};
+                    connections.forEach(conn => {
+                        if (conn.label && !conn.isDashed) {
+                            if (!labelCountByTarget[conn.to]) {
+                                labelCountByTarget[conn.to] = 0;
+                            }
+                            labelCountByTarget[conn.to]++;
+                        }
+                    });
+
+                    // 各エッジラベルの予想位置を計算
+                    const predictedLabelBounds = [];
+                    const labelOffsets = {};
+
+                    connections.forEach(conn => {
+                        if (!conn.label || conn.isDashed) return;
+
+                        const toPos = nodePositions.get(conn.to);
+                        if (!toPos) return;
+
+                        const toElement = document.getElementById(conn.to);
+                        if (!toElement || toElement.classList.contains('hidden')) return;
+
+                        // このターゲットノードへのラベルオフセット
+                        if (!labelOffsets[conn.to]) {
+                            labelOffsets[conn.to] = 0;
+                        }
+                        const offset = labelOffsets[conn.to];
+                        labelOffsets[conn.to]++;
+
+                        // ラベルの予想位置（vertical-layoutではY座標の上に配置）
+                        const labelLeft = toPos.x;
+                        const labelTop = toPos.y - estimatedLabelHeight - labelTopMargin - (offset * (estimatedLabelHeight + labelVerticalSpacing));
+                        const labelWidth = 100;
+                        const labelHeight = estimatedLabelHeight;
+
+                        predictedLabelBounds.push({
+                            from: conn.from,
+                            to: conn.to,
+                            left: labelLeft,
+                            top: labelTop,
+                            right: labelLeft + labelWidth,
+                            bottom: labelTop + labelHeight
+                        });
+                    });
+
+                    // 各ノードと予想ラベル位置の衝突をチェック
+                    treeStructure.levels.forEach((level, levelIndex) => {
+                        level.forEach(node => {
+                            const nodePos = nodePositions.get(node.id);
+                            if (!nodePos) return;
+
+                            const element = document.getElementById(node.id);
+                            if (!element || element.classList.contains('hidden')) return;
+
+                            const nodeLeft = nodePos.x;
+                            const nodeTop = nodePos.y;
+                            const nodeRight = nodePos.x + nodePos.width;
+                            const nodeBottom = nodePos.y + nodePos.height;
+
+                            // このノードと重なる予想ラベルを検出
+                            predictedLabelBounds.forEach(label => {
+                                // 自分自身に向かうラベルは除外
+                                if (label.to === node.id) return;
+
+                                const xOverlap = !(nodeRight + collisionMargin < label.left || nodeLeft - collisionMargin > label.right);
+                                const yOverlap = !(nodeBottom + collisionMargin < label.top || nodeTop - collisionMargin > label.bottom);
+
+                                if (xOverlap && yOverlap) {
+                                    // 衝突検出：ノードを右にシフト
+                                    const shiftAmount = label.right + collisionMargin - nodeLeft + baseSpacing;
+                                    if (window.DEBUG_CONNECTIONS) {
+                                        console.log('[NodeLabelCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to label from ' + label.from + ' to ' + label.to);
+                                    }
+                                    nodePos.x += shiftAmount;
+                                    setNodePosition(element, nodePos.x, nodePos.y);
+                                    hasCollision = true;
+                                }
+                            });
+                        });
+                    });
+
+                    if (!hasCollision) break;
+                }
+            }
+
+            resolveNodeLabelCollisions();
+
             const maxX = Math.max(...Array.from(nodePositions.values()).map(pos => pos.x + pos.width));
             if (maxX + 100 > containerWidth) {
                 containerWidth = maxX + 100;
