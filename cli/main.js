@@ -33,8 +33,8 @@ function createDashedNodesAndEdges(nodes, regularConnections, backEdges) {
         return maxDepth;
     }
 
-    // ノードの深度（ルートからの距離）をBFSで計算
-    function calculateNodeDepth(nodeId, connections) {
+    // 全ノードの深度（ルートからの距離）をBFSで一度に計算
+    function calculateAllNodeDepths(connections) {
         const nodeDepths = new Map();
         const childNodes = new Set(connections.map(c => c.to));
         const rootNodes = nodes.filter(n => !childNodes.has(n.id));
@@ -63,8 +63,11 @@ function createDashedNodesAndEdges(nodes, regularConnections, backEdges) {
             });
         }
 
-        return nodeDepths.get(nodeId) || 0;
+        return nodeDepths;
     }
+
+    // 全ノードの深度を一度に計算（パフォーマンス最適化）
+    const allNodeDepths = calculateAllNodeDepths(regularConnections);
 
     // 各バックエッジについて点線ノードと点線エッジを作成
     backEdges.forEach(backEdge => {
@@ -84,7 +87,7 @@ function createDashedNodesAndEdges(nodes, regularConnections, backEdges) {
         // 1. 元ノード（backEdge.to）の全子孫より後
         // 2. 親ノード（backEdge.from）より後
         const targetDescendantDepth = calculateMaxDescendantDepth(backEdge.to, regularConnections);
-        const parentDepth = calculateNodeDepth(backEdge.from, regularConnections);
+        const parentDepth = allNodeDepths.get(backEdge.from) || 0;
         dashedNode.minDepth = Math.max(targetDescendantDepth + 1, parentDepth + 1);
 
         dashedNodes.push(dashedNode);
