@@ -1,21 +1,41 @@
 function getVerticalLayout() {
     return `
         function verticalLayout(nodes, connections, calculateAllNodeWidths, analyzeTreeStructure) {
+            // レイアウト定数
+            const LAYOUT_CONSTANTS = {
+                CONTAINER_DEFAULT: 800,
+                CONTAINER_MARGIN: 100,
+                LEFT_MARGIN: 50,
+                BASE_SPACING: 60,
+                EDGE_CLEARANCE: 80,
+                MIN_LEVEL_SPACING: 120,
+                COLLISION_MARGIN: 20,
+                COLLISION_MAX_ITERATIONS: 10,
+                DASHED_NODE_MAX_ITERATIONS: 5,
+                LONG_DISTANCE_THRESHOLD: 3,
+                LABEL_COLLISION_MARGIN: 5,
+                LABEL_MAX_ITERATIONS: 5,
+                LABEL_ESTIMATED_HEIGHT: 20,
+                LABEL_VERTICAL_SPACING: 10,
+                LABEL_TOP_MARGIN: 5,
+                LABEL_ESTIMATED_WIDTH: 100
+            };
+
             const container = document.getElementById('treeContainer');
             if (!container) {
                 console.error('treeContainer element not found');
                 return new Map();
             }
-            let containerWidth = Math.max(800, container.clientWidth || 800);
+            let containerWidth = Math.max(LAYOUT_CONSTANTS.CONTAINER_DEFAULT, container.clientWidth || LAYOUT_CONSTANTS.CONTAINER_DEFAULT);
 
             const nodeWidthMap = calculateAllNodeWidths(nodes);
             const treeStructure = analyzeTreeStructure(nodes, connections);
             const nodePositions = new Map();
 
-            const leftMargin = 50;
-            const baseSpacing = 60; // 基本スペース
-            const edgeClearance = 80; // エッジとノード間のクリアランス
-            const minLevelSpacing = 120; // 階層間の最小距離
+            const leftMargin = LAYOUT_CONSTANTS.LEFT_MARGIN;
+            const baseSpacing = LAYOUT_CONSTANTS.BASE_SPACING;
+            const edgeClearance = LAYOUT_CONSTANTS.EDGE_CLEARANCE;
+            const minLevelSpacing = LAYOUT_CONSTANTS.MIN_LEVEL_SPACING;
 
             // 各階層間の必要な距離を動的に計算
             const levelHeights = [];
@@ -134,8 +154,8 @@ function getVerticalLayout() {
 
             // エッジとノードの衝突を検知して回避
             function resolveEdgeNodeCollisions() {
-                const maxIterations = 10;
-                const collisionMargin = 20;
+                const maxIterations = LAYOUT_CONSTANTS.COLLISION_MAX_ITERATIONS;
+                const collisionMargin = LAYOUT_CONSTANTS.COLLISION_MARGIN;
 
                 for (let iteration = 0; iteration < maxIterations; iteration++) {
                     let hasCollision = false;
@@ -193,8 +213,8 @@ function getVerticalLayout() {
             // 点線ノード専用のエッジ衝突回避
             // 点線ノードは通常エッジ（connections）のみを考慮し、点線エッジは無視
             function resolveDashedNodeEdgeCollisions() {
-                const maxIterations = 5;
-                const collisionMargin = 20;
+                const maxIterations = LAYOUT_CONSTANTS.DASHED_NODE_MAX_ITERATIONS;
+                const collisionMargin = LAYOUT_CONSTANTS.COLLISION_MARGIN;
 
                 for (let iteration = 0; iteration < maxIterations; iteration++) {
                     let hasCollision = false;
@@ -230,7 +250,7 @@ function getVerticalLayout() {
 
                                 // 長距離エッジ（階層差が3以上）は除外：大きなシフトを防ぐ
                                 const levelSpan = toLevel - fromLevel;
-                                if (levelSpan >= 3) return;
+                                if (levelSpan >= LAYOUT_CONSTANTS.LONG_DISTANCE_THRESHOLD) return;
 
                                 // エッジの経路のX座標範囲を計算
                                 const edgeMinX = Math.min(fromPos.x, toPos.x);
@@ -314,11 +334,11 @@ function getVerticalLayout() {
             // ノードとエッジラベルの衝突を検出して回避
             // ラベルの予想位置を計算してノードとの衝突をチェック
             function resolveNodeLabelCollisions() {
-                const maxIterations = 5;
-                const collisionMargin = 5;
-                const estimatedLabelHeight = 20;
-                const labelVerticalSpacing = 10;
-                const labelTopMargin = 5;
+                const maxIterations = LAYOUT_CONSTANTS.LABEL_MAX_ITERATIONS;
+                const collisionMargin = LAYOUT_CONSTANTS.LABEL_COLLISION_MARGIN;
+                const estimatedLabelHeight = LAYOUT_CONSTANTS.LABEL_ESTIMATED_HEIGHT;
+                const labelVerticalSpacing = LAYOUT_CONSTANTS.LABEL_VERTICAL_SPACING;
+                const labelTopMargin = LAYOUT_CONSTANTS.LABEL_TOP_MARGIN;
 
                 for (let iteration = 0; iteration < maxIterations; iteration++) {
                     let hasCollision = false;
@@ -357,7 +377,7 @@ function getVerticalLayout() {
                         // ラベルの予想位置（vertical-layoutではY座標の上に配置）
                         const labelLeft = toPos.x;
                         const labelTop = toPos.y - estimatedLabelHeight - labelTopMargin - (offset * (estimatedLabelHeight + labelVerticalSpacing));
-                        const labelWidth = 100;
+                        const labelWidth = LAYOUT_CONSTANTS.LABEL_ESTIMATED_WIDTH;
                         const labelHeight = estimatedLabelHeight;
 
                         predictedLabelBounds.push({
@@ -413,8 +433,8 @@ function getVerticalLayout() {
             resolveNodeLabelCollisions();
 
             const maxX = Math.max(...Array.from(nodePositions.values()).map(pos => pos.x + pos.width));
-            if (maxX + 100 > containerWidth) {
-                containerWidth = maxX + 100;
+            if (maxX + LAYOUT_CONSTANTS.CONTAINER_MARGIN > containerWidth) {
+                containerWidth = maxX + LAYOUT_CONSTANTS.CONTAINER_MARGIN;
                 container.style.width = containerWidth + 'px';
             }
 

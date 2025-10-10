@@ -1,22 +1,43 @@
 function getHorizontalLayout() {
     return `
         function horizontalLayout(nodes, connections, calculateAllNodeWidths, analyzeTreeStructure) {
+            // レイアウト定数
+            const LAYOUT_CONSTANTS = {
+                CONTAINER_DEFAULT: 800,
+                CONTAINER_MARGIN: 100,
+                LEFT_MARGIN: 50,
+                TOP_MARGIN: 50,
+                BASE_SPACING: 60,
+                EDGE_CLEARANCE: 80,
+                MIN_LEVEL_SPACING: 200,
+                COLLISION_MARGIN: 20,
+                COLLISION_MAX_ITERATIONS: 10,
+                DASHED_NODE_MAX_ITERATIONS: 5,
+                LONG_DISTANCE_THRESHOLD: 3,
+                LABEL_COLLISION_MARGIN: 5,
+                LABEL_MAX_ITERATIONS: 5,
+                LABEL_ESTIMATED_HEIGHT: 20,
+                LABEL_VERTICAL_SPACING: 10,
+                LABEL_TOP_MARGIN: 5,
+                LABEL_ESTIMATED_WIDTH: 100
+            };
+
             const container = document.getElementById('treeContainer');
             if (!container) {
                 console.error('treeContainer element not found');
                 return new Map();
             }
-            let containerHeight = Math.max(800, container.clientHeight || 800);
+            let containerHeight = Math.max(LAYOUT_CONSTANTS.CONTAINER_DEFAULT, container.clientHeight || LAYOUT_CONSTANTS.CONTAINER_DEFAULT);
 
             const nodeWidthMap = calculateAllNodeWidths(nodes);
             const treeStructure = analyzeTreeStructure(nodes, connections);
             const nodePositions = new Map();
 
-            const leftMargin = 50;
-            const topMargin = 50;
-            const baseSpacing = 60; // 基本スペース
-            const edgeClearance = 80; // エッジとノード間のクリアランス
-            const minLevelSpacing = 200; // 階層間の最小距離
+            const leftMargin = LAYOUT_CONSTANTS.LEFT_MARGIN;
+            const topMargin = LAYOUT_CONSTANTS.TOP_MARGIN;
+            const baseSpacing = LAYOUT_CONSTANTS.BASE_SPACING;
+            const edgeClearance = LAYOUT_CONSTANTS.EDGE_CLEARANCE;
+            const minLevelSpacing = LAYOUT_CONSTANTS.MIN_LEVEL_SPACING;
 
             // 各階層の最大ノード幅を事前に計算
             const levelMaxWidths = [];
@@ -120,8 +141,8 @@ function getHorizontalLayout() {
             // エッジとノードの衝突を検知して回避
             // エッジの垂直線とノードが実際に重なる場合のみシフト
             function resolveEdgeNodeCollisions() {
-                const maxIterations = 10;
-                const collisionMargin = 20;
+                const maxIterations = LAYOUT_CONSTANTS.COLLISION_MAX_ITERATIONS;
+                const collisionMargin = LAYOUT_CONSTANTS.COLLISION_MARGIN;
 
                 for (let iteration = 0; iteration < maxIterations; iteration++) {
                     let hasCollision = false;
@@ -193,8 +214,8 @@ function getHorizontalLayout() {
             // 点線ノード専用のエッジ衝突回避
             // 点線ノードは通常エッジ（connections）のみを考慮し、点線エッジは無視
             function resolveDashedNodeEdgeCollisions() {
-                const maxIterations = 5;
-                const collisionMargin = 20;
+                const maxIterations = LAYOUT_CONSTANTS.DASHED_NODE_MAX_ITERATIONS;
+                const collisionMargin = LAYOUT_CONSTANTS.COLLISION_MARGIN;
 
                 for (let iteration = 0; iteration < maxIterations; iteration++) {
                     let hasCollision = false;
@@ -230,7 +251,7 @@ function getHorizontalLayout() {
 
                                 // 長距離エッジ（階層差が3以上）は除外：大きなシフトを防ぐ
                                 const levelSpan = toLevel - fromLevel;
-                                if (levelSpan >= 3) return;
+                                if (levelSpan >= LAYOUT_CONSTANTS.LONG_DISTANCE_THRESHOLD) return;
 
                                 // エッジの経路のY座標範囲を計算
                                 const edgeMinY = Math.min(fromPos.y, toPos.y);
@@ -314,11 +335,11 @@ function getHorizontalLayout() {
             // ノードとエッジラベルの衝突を検出して回避
             // ラベルの予想位置を計算してノードとの衝突をチェック
             function resolveNodeLabelCollisions() {
-                const maxIterations = 5;
-                const collisionMargin = 5;
-                const estimatedLabelHeight = 20; // labels.jsのlabelHeight相当
-                const labelVerticalSpacing = 10; // labels.jsと同じ値
-                const labelTopMargin = 5; // labels.jsと同じ値
+                const maxIterations = LAYOUT_CONSTANTS.LABEL_MAX_ITERATIONS;
+                const collisionMargin = LAYOUT_CONSTANTS.LABEL_COLLISION_MARGIN;
+                const estimatedLabelHeight = LAYOUT_CONSTANTS.LABEL_ESTIMATED_HEIGHT;
+                const labelVerticalSpacing = LAYOUT_CONSTANTS.LABEL_VERTICAL_SPACING;
+                const labelTopMargin = LAYOUT_CONSTANTS.LABEL_TOP_MARGIN;
 
                 for (let iteration = 0; iteration < maxIterations; iteration++) {
                     let hasCollision = false;
@@ -357,7 +378,7 @@ function getHorizontalLayout() {
                         // ラベルの予想位置（labels.jsのロジックと同じ）
                         const labelLeft = toPos.x;
                         const labelTop = toPos.y - estimatedLabelHeight - labelTopMargin - (offset * (estimatedLabelHeight + labelVerticalSpacing));
-                        const labelWidth = 100; // 概算値（実際の幅は描画時に決まる）
+                        const labelWidth = LAYOUT_CONSTANTS.LABEL_ESTIMATED_WIDTH;
                         const labelHeight = estimatedLabelHeight;
 
                         predictedLabelBounds.push({
@@ -417,14 +438,14 @@ function getHorizontalLayout() {
                 const maxY = Math.max(...Array.from(nodePositions.values()).map(pos => pos.y + pos.height));
                 const maxX = Math.max(...Array.from(nodePositions.values()).map(pos => pos.x + pos.width));
 
-                if (maxY + 100 > containerHeight) {
-                    containerHeight = maxY + 100;
+                if (maxY + LAYOUT_CONSTANTS.CONTAINER_MARGIN > containerHeight) {
+                    containerHeight = maxY + LAYOUT_CONSTANTS.CONTAINER_MARGIN;
                     container.style.height = containerHeight + 'px';
                 }
 
-                let containerWidth = Math.max(800, container.clientWidth || 800);
-                if (maxX + 100 > containerWidth) {
-                    containerWidth = maxX + 100;
+                let containerWidth = Math.max(LAYOUT_CONSTANTS.CONTAINER_DEFAULT, container.clientWidth || LAYOUT_CONSTANTS.CONTAINER_DEFAULT);
+                if (maxX + LAYOUT_CONSTANTS.CONTAINER_MARGIN > containerWidth) {
+                    containerWidth = maxX + LAYOUT_CONSTANTS.CONTAINER_MARGIN;
                     container.style.width = containerWidth + 'px';
                 }
             }
