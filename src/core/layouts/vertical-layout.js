@@ -190,6 +190,48 @@ function getVerticalLayout() {
 
             // resolveEdgeNodeCollisions(); // 一旦無効化
 
+            // 同じ階層内のノード同士の重なりを解消
+            function resolveSameLevelCollisions() {
+                treeStructure.levels.forEach((level, levelIndex) => {
+                    // この階層のノードをX座標でソート
+                    const levelNodes = level.map(node => ({
+                        node: node,
+                        pos: nodePositions.get(node.id)
+                    })).filter(item => item.pos).sort((a, b) => a.pos.x - b.pos.x);
+
+                    // 重なりをチェックして調整
+                    for (let i = 0; i < levelNodes.length - 1; i++) {
+                        const current = levelNodes[i];
+                        const next = levelNodes[i + 1];
+
+                        const currentRight = current.pos.x + current.pos.width;
+                        const nextLeft = next.pos.x;
+                        const nodeSpacing = calculateNodeSpacing(next.node.id, connections, true);
+
+                        // 重なりまたは間隔不足をチェック
+                        if (currentRight + nodeSpacing > nextLeft) {
+                            const shiftAmount = currentRight + nodeSpacing - nextLeft;
+                            next.pos.x += shiftAmount;
+                            const element = document.getElementById(next.node.id);
+                            if (element) {
+                                setNodePosition(element, next.pos.x, next.pos.y);
+                            }
+
+                            // 後続のノードも全て同じ量だけシフト
+                            for (let j = i + 2; j < levelNodes.length; j++) {
+                                levelNodes[j].pos.x += shiftAmount;
+                                const elem = document.getElementById(levelNodes[j].node.id);
+                                if (elem) {
+                                    setNodePosition(elem, levelNodes[j].pos.x, levelNodes[j].pos.y);
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            resolveSameLevelCollisions();
+
             const maxX = Math.max(...Array.from(nodePositions.values()).map(pos => pos.x + pos.width));
             if (maxX + 100 > containerWidth) {
                 containerWidth = maxX + 100;
