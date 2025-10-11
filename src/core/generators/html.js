@@ -14,6 +14,8 @@ const { getPathYAdjuster } = require('../../runtime/rendering/connections/path-y
 const { getPathGenerator } = require('../../runtime/rendering/connections/path-generator');
 const { getEdgeSpacingCalculator } = require('../../runtime/rendering/connections/edge-spacing-calculator');
 const { getCollisionUtils } = require('../../runtime/rendering/connections/collision-utils');
+const { getArrowRenderer } = require('../../runtime/rendering/connections/arrow-renderer');
+const { getPathBuilder } = require('../../runtime/rendering/connections/path-builder');
 const { getConnectionRenderer } = require('../../runtime/rendering/connections/renderer');
 const { getRedrawHelpers } = require('../../runtime/rendering/redraw-helpers');
 const { getShadowManager } = require('../../runtime/rendering/effects/shadow-manager');
@@ -104,6 +106,12 @@ function getJavaScriptContent(nodes, connections, styles = {}, classDefs = {}, d
 
         // Import edge spacing calculator
         ${getEdgeSpacingCalculator()}
+
+        // Import arrow renderer
+        ${getArrowRenderer()}
+
+        // Import path builder
+        ${getPathBuilder()}
 
         // Import connection renderer
         ${getConnectionRenderer()}
