@@ -112,6 +112,15 @@ function getHorizontalLayout() {
             });
 
             // 共通モジュールを使用して衝突を解決
+            resolveEdgeNodeCollisions({
+                treeStructure,
+                nodePositions,
+                connections,
+                constants: LAYOUT_CONSTANTS,
+                isVertical: false,
+                setNodePosition
+            });
+
             resolveDashedNodeEdgeCollisions({
                 treeStructure,
                 nodePositions,

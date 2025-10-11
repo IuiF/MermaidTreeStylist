@@ -1,5 +1,112 @@
 function getCollisionResolvers() {
     return `
+        // エッジとノードの衝突を回避（全ノード対象）
+        function resolveEdgeNodeCollisions(params) {
+            const {
+                treeStructure,
+                nodePositions,
+                connections,
+                constants,
+                isVertical,
+                setNodePosition
+            } = params;
+
+            const maxIterations = constants.COLLISION_MAX_ITERATIONS;
+            const collisionMargin = constants.COLLISION_MARGIN;
+            const baseSpacing = constants.BASE_SPACING;
+
+            for (let iteration = 0; iteration < maxIterations; iteration++) {
+                let hasCollision = false;
+
+                connections.forEach(conn => {
+                    const fromPos = nodePositions.get(conn.from);
+                    const toPos = nodePositions.get(conn.to);
+
+                    if (!fromPos || !toPos) return;
+
+                    let fromLevel = -1, toLevel = -1;
+                    treeStructure.levels.forEach((level, idx) => {
+                        if (level.some(n => n.id === conn.from)) fromLevel = idx;
+                        if (level.some(n => n.id === conn.to)) toLevel = idx;
+                    });
+
+                    if (fromLevel === -1 || toLevel === -1 || toLevel <= fromLevel) return;
+
+                    // 長距離エッジは除外（大きなギャップを防ぐ）
+                    const levelSpan = toLevel - fromLevel;
+                    if (levelSpan >= constants.LONG_DISTANCE_THRESHOLD) return;
+
+                    let edgePathBounds;
+                    if (isVertical) {
+                        edgePathBounds = {
+                            minX: Math.min(fromPos.x, toPos.x),
+                            maxX: Math.max(fromPos.x + fromPos.width, toPos.x + toPos.width),
+                            minY: fromPos.y,
+                            maxY: toPos.y
+                        };
+                    } else {
+                        edgePathBounds = {
+                            minX: fromPos.x + fromPos.width,
+                            maxX: toPos.x,
+                            minY: Math.min(fromPos.y, toPos.y),
+                            maxY: Math.max(fromPos.y + fromPos.height, toPos.y + toPos.height)
+                        };
+                    }
+
+                    // 中間階層のノードをチェック
+                    for (let levelIdx = fromLevel + 1; levelIdx < toLevel; levelIdx++) {
+                        const level = treeStructure.levels[levelIdx];
+                        level.forEach(node => {
+                            const nodePos = nodePositions.get(node.id);
+                            if (!nodePos) return;
+
+                            const element = document.getElementById(node.id);
+                            if (!element || element.classList.contains('hidden')) return;
+
+                            const nodeBounds = {
+                                left: nodePos.x - collisionMargin,
+                                right: nodePos.x + nodePos.width + collisionMargin,
+                                top: nodePos.y - collisionMargin,
+                                bottom: nodePos.y + (nodePos.height || 0) + collisionMargin
+                            };
+
+                            let overlap;
+                            if (isVertical) {
+                                const xOverlap = nodeBounds.left < edgePathBounds.maxX && nodeBounds.right > edgePathBounds.minX;
+                                const yOverlap = !(edgePathBounds.maxY < nodeBounds.top || edgePathBounds.minY > nodeBounds.bottom);
+                                overlap = xOverlap && yOverlap;
+                            } else {
+                                const yOverlap = nodeBounds.top < edgePathBounds.maxY && nodeBounds.bottom > edgePathBounds.minY;
+                                const xOverlap = !(edgePathBounds.maxX < nodeBounds.left || edgePathBounds.minX > nodeBounds.right);
+                                overlap = xOverlap && yOverlap;
+                            }
+
+                            if (overlap) {
+                                if (isVertical) {
+                                    const shiftAmount = edgePathBounds.maxX - nodeBounds.left + baseSpacing;
+                                    if (window.DEBUG_CONNECTIONS) {
+                                        console.log('[EdgeNodeCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to edge ' + conn.from + '->' + conn.to);
+                                    }
+                                    nodePos.x += shiftAmount;
+                                    setNodePosition(element, nodePos.x, nodePos.y);
+                                } else {
+                                    const shiftAmount = edgePathBounds.maxY - nodeBounds.top + baseSpacing;
+                                    if (window.DEBUG_CONNECTIONS) {
+                                        console.log('[EdgeNodeCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to edge ' + conn.from + '->' + conn.to);
+                                    }
+                                    nodePos.y += shiftAmount;
+                                    setNodePosition(element, nodePos.x, nodePos.y);
+                                }
+                                hasCollision = true;
+                            }
+                        });
+                    }
+                });
+
+                if (!hasCollision) break;
+            }
+        }
+
         // 点線ノード専用のエッジ衝突回避
         function resolveDashedNodeEdgeCollisions(params) {
             const {
