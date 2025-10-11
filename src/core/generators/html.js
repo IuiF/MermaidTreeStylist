@@ -5,6 +5,7 @@ const { getSVGHelpers } = require('../../shared/svg-helpers');
 const { getLayoutConstants } = require('../layouts/shared-constants');
 const { getLayoutHelpers } = require('../layouts/layout-helpers');
 const { getCollisionResolvers } = require('../layouts/shared-collision-resolvers');
+const { getSharedLayoutCore } = require('../layouts/shared-layout-core');
 const { getVerticalLayout } = require('../layouts/vertical-layout');
 const { getHorizontalLayout } = require('../layouts/horizontal-layout');
 const { getConnectionConstants } = require('../../runtime/rendering/connections/constants');
@@ -82,6 +83,9 @@ function getJavaScriptContent(nodes, connections, styles = {}, classDefs = {}, d
 
         // Import collision resolvers
         ${getCollisionResolvers()}
+
+        // Import shared layout core
+        ${getSharedLayoutCore()}
 
         // Import layouts
         ${getVerticalLayout()}
