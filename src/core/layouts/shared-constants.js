@@ -7,7 +7,7 @@ function getLayoutConstants() {
             TOP_MARGIN: 50,
             BASE_SPACING: 60,
             EDGE_CLEARANCE: 80,
-            MIN_LEVEL_SPACING: 120,
+            MIN_LEVEL_SPACING: 100,
             COLLISION_MARGIN: 20,
             COLLISION_MAX_ITERATIONS: 10,
             DASHED_NODE_MAX_ITERATIONS: 5,
