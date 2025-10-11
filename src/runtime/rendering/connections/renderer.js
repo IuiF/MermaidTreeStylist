@@ -49,7 +49,6 @@ function getConnectionRenderer() {
 
             labelOffsets = {};
 
-            let connectionCount = 0;
             connections.forEach(conn => {
                 const fromElement = svgHelpers.getNodeElement(conn.from);
                 const toElement = svgHelpers.getNodeElement(conn.to);
@@ -96,7 +95,6 @@ function getConnectionRenderer() {
 
                     const arrow = createArrow(x1, y1, x2, y2, conn);
                     svgLayer.appendChild(arrow);
-                    connectionCount++;
 
                     const labelGroup = createConnectionLabel(conn, toElement);
                     if (labelGroup) {

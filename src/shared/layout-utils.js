@@ -34,9 +34,6 @@ function getLayoutUtils() {
             return nodeWidthMap;
         }
 
-        function debugActualWidths(nodes) {
-            // デバッグ用関数（現在は何もしない）
-        }
 
         function calculateConnectionLabelSpacing(connections, parentId) {
             const labelFont = '11px Arial, sans-serif';
