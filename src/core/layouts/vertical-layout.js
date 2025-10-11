@@ -1,36 +1,17 @@
 function getVerticalLayout() {
     return `
         function verticalLayout(nodes, connections, calculateAllNodeWidths, analyzeTreeStructure) {
-            const container = document.getElementById('treeContainer');
-            if (!container) {
-                console.error('treeContainer element not found');
-                return new Map();
-            }
+            const layoutData = initializeLayout(nodes, connections, calculateAllNodeWidths, analyzeTreeStructure);
+            if (!layoutData) return new Map();
+
+            const { container, treeStructure, nodePositions } = layoutData;
             let containerWidth = Math.max(LAYOUT_CONSTANTS.CONTAINER_DEFAULT, container.clientWidth || LAYOUT_CONSTANTS.CONTAINER_DEFAULT);
 
-            const nodeWidthMap = calculateAllNodeWidths(nodes);
-            const treeStructure = analyzeTreeStructure(nodes, connections);
-            const nodePositions = new Map();
-
             const leftMargin = LAYOUT_CONSTANTS.LEFT_MARGIN;
-            const baseSpacing = LAYOUT_CONSTANTS.BASE_SPACING;
             const edgeClearance = LAYOUT_CONSTANTS.EDGE_CLEARANCE;
             const minLevelSpacing = LAYOUT_CONSTANTS.MIN_LEVEL_SPACING;
 
-            // 各階層間の必要な距離を動的に計算
-            const levelHeights = [];
-            for (let i = 0; i < treeStructure.levels.length - 1; i++) {
-                const fromLevel = treeStructure.levels[i];
-                const toLevel = treeStructure.levels[i + 1];
-                levelHeights[i] = calculateLevelSpacing(fromLevel, toLevel, connections, i, i + 1, treeStructure.levels);
-            }
-
-            // 各階層のY座標を計算
-            const levelYPositions = [50];
-            for (let i = 1; i < treeStructure.levels.length; i++) {
-                const height = Math.max(levelHeights[i - 1] || minLevelSpacing, minLevelSpacing);
-                levelYPositions[i] = levelYPositions[i - 1] + height + edgeClearance;
-            }
+            const levelYPositions = calculateLevelPositions(treeStructure, connections, minLevelSpacing, edgeClearance, 50);
 
             treeStructure.levels.forEach((level, levelIndex) => {
                 const y = levelYPositions[levelIndex];
@@ -53,7 +34,7 @@ function getVerticalLayout() {
                     level.forEach(node => {
                         const element = document.getElementById(node.id);
                         if (element && !element.classList.contains('hidden')) {
-                            const parents = connections.filter(conn => conn.to === node.id).map(conn => conn.from);
+                            const parents = getParents(node.id, connections);
 
                             if (parents.length > 0) {
                                 let selectedParent = null;
@@ -62,14 +43,7 @@ function getVerticalLayout() {
 
                                 for (const parentId of parents) {
                                     if (nodePositions.has(parentId)) {
-                                        let parentLevel = -1;
-                                        for (let i = 0; i < treeStructure.levels.length; i++) {
-                                            if (treeStructure.levels[i].some(n => n.id === parentId)) {
-                                                parentLevel = i;
-                                                break;
-                                            }
-                                        }
-
+                                        const parentLevel = findParentLevel(parentId, treeStructure);
                                         const parentPos = nodePositions.get(parentId);
 
                                         if (parentLevel < minParentLevel ||
@@ -83,7 +57,7 @@ function getVerticalLayout() {
 
                                 if (selectedParent) {
                                     const parentPos = nodePositions.get(selectedParent);
-                                    const siblings = connections.filter(conn => conn.from === selectedParent).map(conn => conn.to);
+                                    const siblings = getSiblings(selectedParent, connections);
 
                                     const nodeSpacing = calculateNodeSpacing(node.id, connections, true);
                                     let startX = parents.length > 1
@@ -124,26 +98,7 @@ function getVerticalLayout() {
                 }
             });
 
-            // 共通モジュールを使用して衝突を解決
-            resolveEdgeNodeCollisions({
-                treeStructure,
-                nodePositions,
-                connections,
-                constants: LAYOUT_CONSTANTS,
-                isVertical: true,
-                setNodePosition
-            });
-
-            resolveDashedNodeEdgeCollisions({
-                treeStructure,
-                nodePositions,
-                connections,
-                constants: LAYOUT_CONSTANTS,
-                isVertical: true,
-                setNodePosition
-            });
-
-            resolveSameLevelCollisions({
+            resolveAllCollisions({
                 treeStructure,
                 nodePositions,
                 connections,
@@ -152,34 +107,13 @@ function getVerticalLayout() {
                 calculateNodeSpacing
             });
 
-            resolveNodeLabelCollisions({
-                treeStructure,
-                nodePositions,
-                connections,
-                constants: LAYOUT_CONSTANTS,
-                isVertical: true,
-                setNodePosition
-            });
-
             const maxX = Math.max(...Array.from(nodePositions.values()).map(pos => pos.x + pos.width));
             if (maxX + LAYOUT_CONSTANTS.CONTAINER_MARGIN > containerWidth) {
                 containerWidth = maxX + LAYOUT_CONSTANTS.CONTAINER_MARGIN;
                 container.style.width = containerWidth + 'px';
             }
 
-            // 各階層の最大ノード高さを計算
-            const levelMaxHeights = [];
-            treeStructure.levels.forEach((level, levelIndex) => {
-                let maxHeight = 0;
-                level.forEach(node => {
-                    const element = document.getElementById(node.id);
-                    if (element && !element.classList.contains('hidden')) {
-                        const dimensions = svgHelpers.getNodeDimensions(element);
-                        maxHeight = Math.max(maxHeight, dimensions.height);
-                    }
-                });
-                levelMaxHeights[levelIndex] = maxHeight;
-            });
+            const levelMaxHeights = calculateLevelMaxDimensions(treeStructure, true);
 
             // 階層情報をグローバルに保存（エッジレンダラーで使用）
             window.layoutLevelInfo = {

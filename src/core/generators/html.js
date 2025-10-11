@@ -3,6 +3,7 @@ const { getLayoutUtils } = require('../../shared/layout-utils');
 const { getTreeStructureAnalyzer } = require('../../shared/tree-structure');
 const { getSVGHelpers } = require('../../shared/svg-helpers');
 const { getLayoutConstants } = require('../layouts/shared-constants');
+const { getLayoutHelpers } = require('../layouts/layout-helpers');
 const { getCollisionResolvers } = require('../layouts/shared-collision-resolvers');
 const { getVerticalLayout } = require('../layouts/vertical-layout');
 const { getHorizontalLayout } = require('../layouts/horizontal-layout');
@@ -75,6 +76,9 @@ function getJavaScriptContent(nodes, connections, styles = {}, classDefs = {}, d
 
         // Import layout constants
         ${getLayoutConstants()}
+
+        // Import layout helpers
+        ${getLayoutHelpers()}
 
         // Import collision resolvers
         ${getCollisionResolvers()}

@@ -1,38 +1,18 @@
 function getHorizontalLayout() {
     return `
         function horizontalLayout(nodes, connections, calculateAllNodeWidths, analyzeTreeStructure) {
-            const container = document.getElementById('treeContainer');
-            if (!container) {
-                console.error('treeContainer element not found');
-                return new Map();
-            }
-            let containerHeight = Math.max(LAYOUT_CONSTANTS.CONTAINER_DEFAULT, container.clientHeight || LAYOUT_CONSTANTS.CONTAINER_DEFAULT);
+            const layoutData = initializeLayout(nodes, connections, calculateAllNodeWidths, analyzeTreeStructure);
+            if (!layoutData) return new Map();
 
-            const nodeWidthMap = calculateAllNodeWidths(nodes);
-            const treeStructure = analyzeTreeStructure(nodes, connections);
-            const nodePositions = new Map();
+            const { container, treeStructure, nodePositions } = layoutData;
+            let containerHeight = Math.max(LAYOUT_CONSTANTS.CONTAINER_DEFAULT, container.clientHeight || LAYOUT_CONSTANTS.CONTAINER_DEFAULT);
 
             const leftMargin = LAYOUT_CONSTANTS.LEFT_MARGIN;
             const topMargin = LAYOUT_CONSTANTS.TOP_MARGIN;
-            const baseSpacing = LAYOUT_CONSTANTS.BASE_SPACING;
             const edgeClearance = LAYOUT_CONSTANTS.EDGE_CLEARANCE;
             const minLevelSpacing = LAYOUT_CONSTANTS.MIN_LEVEL_SPACING;
 
-            // 各階層の最大ノード幅を事前に計算
-            const levelMaxWidths = [];
-            treeStructure.levels.forEach((level, levelIndex) => {
-                let maxWidth = 0;
-                level.forEach(node => {
-                    const element = document.getElementById(node.id);
-                    if (element && !element.classList.contains('hidden')) {
-                        const dimensions = svgHelpers.getNodeDimensions(element);
-                        maxWidth = Math.max(maxWidth, dimensions.width);
-                    }
-                });
-                levelMaxWidths[levelIndex] = maxWidth;
-            });
-
-            // 各階層間の必要な距離を動的に計算
+            const levelMaxWidths = calculateLevelMaxDimensions(treeStructure, false);
             const levelSpacings = [];
             for (let i = 0; i < treeStructure.levels.length - 1; i++) {
                 const fromLevel = treeStructure.levels[i];
@@ -40,7 +20,6 @@ function getHorizontalLayout() {
                 levelSpacings[i] = calculateLevelSpacing(fromLevel, toLevel, connections, i, i + 1, treeStructure.levels);
             }
 
-            // 各階層のX座標を計算
             const levelXPositions = [leftMargin];
             for (let i = 1; i < treeStructure.levels.length; i++) {
                 const spacing = Math.max(levelSpacings[i - 1] || minLevelSpacing, minLevelSpacing);
@@ -54,7 +33,7 @@ function getHorizontalLayout() {
                 level.forEach(node => {
                     const element = document.getElementById(node.id);
                     if (element && !element.classList.contains('hidden')) {
-                        const parents = connections.filter(conn => conn.to === node.id).map(conn => conn.from);
+                        const parents = getParents(node.id, connections);
 
                         if (parents.length > 0) {
                             let selectedParent = null;
@@ -63,7 +42,7 @@ function getHorizontalLayout() {
                             for (const parentId of parents) {
                                 if (nodePositions.has(parentId)) {
                                     const parentPos = nodePositions.get(parentId);
-                                    const siblings = connections.filter(conn => conn.from === parentId).map(conn => conn.to);
+                                    const siblings = getSiblings(parentId, connections);
                                     const nodeSpacing = calculateNodeSpacing(node.id, connections, false);
 
                                     let candidateY = parentPos.y;
@@ -111,41 +90,13 @@ function getHorizontalLayout() {
                 });
             });
 
-            // 共通モジュールを使用して衝突を解決
-            resolveEdgeNodeCollisions({
-                treeStructure,
-                nodePositions,
-                connections,
-                constants: LAYOUT_CONSTANTS,
-                isVertical: false,
-                setNodePosition
-            });
-
-            resolveDashedNodeEdgeCollisions({
-                treeStructure,
-                nodePositions,
-                connections,
-                constants: LAYOUT_CONSTANTS,
-                isVertical: false,
-                setNodePosition
-            });
-
-            resolveSameLevelCollisions({
+            resolveAllCollisions({
                 treeStructure,
                 nodePositions,
                 connections,
                 isVertical: false,
                 setNodePosition,
                 calculateNodeSpacing
-            });
-
-            resolveNodeLabelCollisions({
-                treeStructure,
-                nodePositions,
-                connections,
-                constants: LAYOUT_CONSTANTS,
-                isVertical: false,
-                setNodePosition
             });
 
             // コンテナサイズ調整（nodePositionsが空でない場合のみ）
