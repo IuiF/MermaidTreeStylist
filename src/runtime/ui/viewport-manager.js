@@ -1,14 +1,27 @@
 function getViewportManager() {
     return `
+        const VIEWPORT_CONSTANTS = {
+            MIN_SCALE: 0.2,
+            MAX_SCALE: 6.0,
+            DEFAULT_SCALE: 1.0,
+            ZOOM_DELTA: 0.1,
+            ZOOM_IN_FACTOR: 1.1,
+            ZOOM_OUT_FACTOR: 0.9,
+            WHEEL_TIMEOUT_MS: 500,
+            WHEEL_HISTORY_MS: 300,
+            DELTA_THRESHOLD: 0.5,
+            MARGIN: 50
+        };
+
         const viewportManager = {
-            scale: 1.0,
+            scale: VIEWPORT_CONSTANTS.DEFAULT_SCALE,
             translateX: 0,
             translateY: 0,
             isDragging: false,
             startX: 0,
             startY: 0,
-            minScale: 0.2,
-            maxScale: 6.0,
+            minScale: VIEWPORT_CONSTANTS.MIN_SCALE,
+            maxScale: VIEWPORT_CONSTANTS.MAX_SCALE,
             initialTouchDistance: 0,
             initialTouchCenter: { x: 0, y: 0 },
             lastTouchCenter: { x: 0, y: 0 },
@@ -34,7 +47,7 @@ function getViewportManager() {
                 const worldX = (mouseX - this.translateX) / this.scale;
                 const worldY = (mouseY - this.translateY) / this.scale;
 
-                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                const delta = e.deltaY > 0 ? VIEWPORT_CONSTANTS.ZOOM_OUT_FACTOR : VIEWPORT_CONSTANTS.ZOOM_IN_FACTOR;
                 const newScale = Math.max(this.minScale, Math.min(this.maxScale, this.scale * delta));
 
                 this.translateX = mouseX - worldX * newScale;
@@ -82,8 +95,8 @@ function getViewportManager() {
             handleWheelPan: function(e) {
                 const now = Date.now();
 
-                // 500ms以上間隔が空いたらリセット
-                if (now - this.lastWheelTime > 500) {
+                // タイムアウト以上間隔が空いたらリセット
+                if (now - this.lastWheelTime > VIEWPORT_CONSTANTS.WHEEL_TIMEOUT_MS) {
                     this.diagonalUnlocked = false;
                     this.wheelHistory = [];
                     this.lastValidDeltaX = 0;
@@ -99,31 +112,31 @@ function getViewportManager() {
                 });
 
                 // 古い履歴を削除
-                this.wheelHistory = this.wheelHistory.filter(h => now - h.time < 300);
+                this.wheelHistory = this.wheelHistory.filter(h => now - h.time < VIEWPORT_CONSTANTS.WHEEL_HISTORY_MS);
 
                 let deltaX = e.deltaX;
                 let deltaY = e.deltaY;
 
                 // 斜め移動の検出
                 const recentEvents = this.wheelHistory.slice(-3);
-                const hasRecentX = recentEvents.some(h => Math.abs(h.deltaX) > 0.5);
-                const hasRecentY = recentEvents.some(h => Math.abs(h.deltaY) > 0.5);
+                const hasRecentX = recentEvents.some(h => Math.abs(h.deltaX) > VIEWPORT_CONSTANTS.DELTA_THRESHOLD);
+                const hasRecentY = recentEvents.some(h => Math.abs(h.deltaY) > VIEWPORT_CONSTANTS.DELTA_THRESHOLD);
 
                 if (hasRecentX && hasRecentY && !this.diagonalUnlocked) {
                     this.diagonalUnlocked = true;
                 }
 
                 // 有効なデルタ値を記録
-                if (Math.abs(deltaX) > 0.5) {
+                if (Math.abs(deltaX) > VIEWPORT_CONSTANTS.DELTA_THRESHOLD) {
                     this.lastValidDeltaX = deltaX;
                 }
-                if (Math.abs(deltaY) > 0.5) {
+                if (Math.abs(deltaY) > VIEWPORT_CONSTANTS.DELTA_THRESHOLD) {
                     this.lastValidDeltaY = deltaY;
                 }
 
                 // 斜めモードが有効な場合、片方が0でも補完
                 if (this.diagonalUnlocked) {
-                    const threshold = 0.5;
+                    const threshold = VIEWPORT_CONSTANTS.DELTA_THRESHOLD;
 
                     if (Math.abs(this.lastValidDeltaX) > 0 && Math.abs(this.lastValidDeltaY) > 0) {
                         const ratio = Math.abs(this.lastValidDeltaX / this.lastValidDeltaY);
@@ -274,10 +287,9 @@ function getViewportManager() {
                 if (!isFinite(this.contentBounds.minX) || !isFinite(this.contentBounds.minY)) return;
 
                 // 最も左と最も上の位置が枠内に収まるように配置（スケール1.0固定）
-                const margin = 50;
-                this.translateX = margin - this.contentBounds.minX;
-                this.translateY = margin - this.contentBounds.minY;
-                this.scale = 1.0;
+                this.translateX = VIEWPORT_CONSTANTS.MARGIN - this.contentBounds.minX;
+                this.translateY = VIEWPORT_CONSTANTS.MARGIN - this.contentBounds.minY;
+                this.scale = VIEWPORT_CONSTANTS.DEFAULT_SCALE;
 
                 this.applyTransform();
             },
@@ -352,10 +364,9 @@ function getViewportManager() {
                 if (!isFinite(this.contentBounds.minX) || !isFinite(this.contentBounds.minY)) return;
 
                 // 最も左と最も上の位置が枠内に収まるように配置
-                const margin = 50;
-                this.translateX = margin - this.contentBounds.minX;
-                this.translateY = margin - this.contentBounds.minY;
-                this.scale = 1.0;
+                this.translateX = VIEWPORT_CONSTANTS.MARGIN - this.contentBounds.minX;
+                this.translateY = VIEWPORT_CONSTANTS.MARGIN - this.contentBounds.minY;
+                this.scale = VIEWPORT_CONSTANTS.DEFAULT_SCALE;
 
                 this.applyTransform();
             },
@@ -382,13 +393,10 @@ function getViewportManager() {
                 const contentWidth = this.contentBounds.maxX - this.contentBounds.minX;
                 const contentHeight = this.contentBounds.maxY - this.contentBounds.minY;
 
-                // マージン
-                const margin = 50;
-
                 // 全体が収まるスケールを計算（拡大はしない）
-                const scaleX = (containerWidth - margin * 2) / contentWidth;
-                const scaleY = (containerHeight - margin * 2) / contentHeight;
-                const scale = Math.min(scaleX, scaleY, 1.0);
+                const scaleX = (containerWidth - VIEWPORT_CONSTANTS.MARGIN * 2) / contentWidth;
+                const scaleY = (containerHeight - VIEWPORT_CONSTANTS.MARGIN * 2) / contentHeight;
+                const scale = Math.min(scaleX, scaleY, VIEWPORT_CONSTANTS.DEFAULT_SCALE);
 
                 // スケール適用後のコンテンツサイズ
                 const scaledWidth = contentWidth * scale;
