@@ -2,6 +2,8 @@ const { getBaseTemplate } = require('../../templates/base');
 const { getLayoutUtils } = require('../../shared/layout-utils');
 const { getTreeStructureAnalyzer } = require('../../shared/tree-structure');
 const { getSVGHelpers } = require('../../shared/svg-helpers');
+const { getLayoutConstants } = require('../layouts/shared-constants');
+const { getCollisionResolvers } = require('../layouts/shared-collision-resolvers');
 const { getVerticalLayout } = require('../layouts/vertical-layout');
 const { getHorizontalLayout } = require('../layouts/horizontal-layout');
 const { getConnectionConstants } = require('../../runtime/rendering/connections/constants');
@@ -68,6 +70,12 @@ function getJavaScriptContent(nodes, connections, styles = {}, classDefs = {}, d
 
         // Import tree structure analyzer
         ${getTreeStructureAnalyzer()}
+
+        // Import layout constants
+        ${getLayoutConstants()}
+
+        // Import collision resolvers
+        ${getCollisionResolvers()}
 
         // Import layouts
         ${getVerticalLayout()}
