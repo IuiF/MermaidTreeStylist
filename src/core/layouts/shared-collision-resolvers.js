@@ -1,5 +1,33 @@
 function getCollisionResolvers() {
     return `
+        function createAxisHelpers(isVertical) {
+            return {
+                getPrimary: (pos) => isVertical ? pos.x : pos.y,
+                getSecondary: (pos) => isVertical ? pos.y : pos.x,
+                getPrimaryDim: (pos) => isVertical ? pos.width : pos.height,
+                getSecondaryDim: (pos) => isVertical ? pos.height : pos.width,
+                updatePosition: (element, pos, shift) => {
+                    if (isVertical) {
+                        pos.x += shift;
+                    } else {
+                        pos.y += shift;
+                    }
+                }
+            };
+        }
+
+        function checkOverlap(bounds1, bounds2, isVertical) {
+            if (isVertical) {
+                const xOverlap = bounds1.left < bounds2.right && bounds1.right > bounds2.left;
+                const yOverlap = !(bounds2.bottom < bounds1.top || bounds2.top > bounds1.bottom);
+                return xOverlap && yOverlap;
+            } else {
+                const yOverlap = bounds1.top < bounds2.bottom && bounds1.bottom > bounds2.top;
+                const xOverlap = !(bounds2.right < bounds1.left || bounds2.left > bounds1.right);
+                return xOverlap && yOverlap;
+            }
+        }
+
         // エッジとノードの衝突を回避（全ノード対象）
         function resolveEdgeNodeCollisions(params) {
             const {
@@ -70,33 +98,28 @@ function getCollisionResolvers() {
                                 bottom: nodePos.y + (nodePos.height || 0) + collisionMargin
                             };
 
-                            let overlap;
-                            if (isVertical) {
-                                const xOverlap = nodeBounds.left < edgePathBounds.maxX && nodeBounds.right > edgePathBounds.minX;
-                                const yOverlap = !(edgePathBounds.maxY < nodeBounds.top || edgePathBounds.minY > nodeBounds.bottom);
-                                overlap = xOverlap && yOverlap;
-                            } else {
-                                const yOverlap = nodeBounds.top < edgePathBounds.maxY && nodeBounds.bottom > edgePathBounds.minY;
-                                const xOverlap = !(edgePathBounds.maxX < nodeBounds.left || edgePathBounds.minX > nodeBounds.right);
-                                overlap = xOverlap && yOverlap;
-                            }
+                            const edgeBounds = {
+                                left: edgePathBounds.minX,
+                                right: edgePathBounds.maxX,
+                                top: edgePathBounds.minY,
+                                bottom: edgePathBounds.maxY
+                            };
 
-                            if (overlap) {
-                                if (isVertical) {
-                                    const shiftAmount = edgePathBounds.maxX - nodeBounds.left + baseSpacing;
-                                    if (window.DEBUG_CONNECTIONS) {
-                                        console.log('[EdgeNodeCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to edge ' + conn.from + '->' + conn.to);
-                                    }
-                                    nodePos.x += shiftAmount;
-                                    setNodePosition(element, nodePos.x, nodePos.y);
-                                } else {
-                                    const shiftAmount = edgePathBounds.maxY - nodeBounds.top + baseSpacing;
-                                    if (window.DEBUG_CONNECTIONS) {
-                                        console.log('[EdgeNodeCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to edge ' + conn.from + '->' + conn.to);
-                                    }
-                                    nodePos.y += shiftAmount;
-                                    setNodePosition(element, nodePos.x, nodePos.y);
+                            if (checkOverlap(nodeBounds, edgeBounds, isVertical)) {
+                                const shiftAmount = isVertical
+                                    ? edgePathBounds.maxX - nodeBounds.left + baseSpacing
+                                    : edgePathBounds.maxY - nodeBounds.top + baseSpacing;
+
+                                if (window.DEBUG_CONNECTIONS) {
+                                    console.log('[EdgeNodeCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to edge ' + conn.from + '->' + conn.to);
                                 }
+
+                                if (isVertical) {
+                                    nodePos.x += shiftAmount;
+                                } else {
+                                    nodePos.y += shiftAmount;
+                                }
+                                setNodePosition(element, nodePos.x, nodePos.y);
                                 hasCollision = true;
                             }
                         });
@@ -151,55 +174,40 @@ function getCollisionResolvers() {
                             const levelSpan = toLevel - fromLevel;
                             if (levelSpan >= constants.LONG_DISTANCE_THRESHOLD) return;
 
-                            let xOverlap, yOverlap;
-                            if (isVertical) {
-                                const edgeMinX = Math.min(fromPos.x, toPos.x);
-                                const edgeMaxX = Math.max(fromPos.x + fromPos.width, toPos.x + toPos.width);
-                                const horizontalLineMinY = fromPos.y;
-                                const horizontalLineMaxY = toPos.y;
+                            const nodeBounds = {
+                                left: nodePos.x - collisionMargin,
+                                right: nodePos.x + nodePos.width + collisionMargin,
+                                top: nodePos.y - collisionMargin,
+                                bottom: nodePos.y + nodePos.height + collisionMargin
+                            };
 
-                                const nodeLeft = nodePos.x - collisionMargin;
-                                const nodeRight = nodePos.x + nodePos.width + collisionMargin;
-                                const nodeTop = nodePos.y - collisionMargin;
-                                const nodeBottom = nodePos.y + nodePos.height + collisionMargin;
+                            const edgeBounds = isVertical ? {
+                                left: Math.min(fromPos.x, toPos.x),
+                                right: Math.max(fromPos.x + fromPos.width, toPos.x + toPos.width),
+                                top: fromPos.y,
+                                bottom: toPos.y
+                            } : {
+                                left: fromPos.x + fromPos.width,
+                                right: toPos.x,
+                                top: Math.min(fromPos.y, toPos.y),
+                                bottom: Math.max(fromPos.y + fromPos.height, toPos.y + toPos.height)
+                            };
 
-                                xOverlap = nodeLeft < edgeMaxX && nodeRight > edgeMinX;
-                                yOverlap = !(horizontalLineMaxY < nodeTop || horizontalLineMinY > nodeBottom);
-                            } else {
-                                const edgeMinY = Math.min(fromPos.y, toPos.y);
-                                const edgeMaxY = Math.max(fromPos.y + fromPos.height, toPos.y + toPos.height);
-                                const verticalLineMinX = fromPos.x + fromPos.width;
-                                const verticalLineMaxX = toPos.x;
+                            if (checkOverlap(nodeBounds, edgeBounds, isVertical)) {
+                                const shiftAmount = isVertical
+                                    ? edgeBounds.right - nodeBounds.left + baseSpacing
+                                    : edgeBounds.bottom - nodeBounds.top + baseSpacing;
 
-                                const nodeTop = nodePos.y - collisionMargin;
-                                const nodeBottom = nodePos.y + nodePos.height + collisionMargin;
-                                const nodeLeft = nodePos.x - collisionMargin;
-                                const nodeRight = nodePos.x + nodePos.width + collisionMargin;
-
-                                yOverlap = nodeTop < edgeMaxY && nodeBottom > edgeMinY;
-                                xOverlap = !(verticalLineMaxX < nodeLeft || verticalLineMinX > nodeRight);
-                            }
-
-                            if (xOverlap && yOverlap) {
-                                if (isVertical) {
-                                    const edgeMaxX = Math.max(fromPos.x + fromPos.width, toPos.x + toPos.width);
-                                    const nodeLeft = nodePos.x - collisionMargin;
-                                    const shiftAmount = edgeMaxX - nodeLeft + baseSpacing;
-                                    if (window.DEBUG_CONNECTIONS) {
-                                        console.log('[DashedNodeEdgeCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to edge ' + conn.from + '->' + conn.to);
-                                    }
-                                    nodePos.x += shiftAmount;
-                                    setNodePosition(element, nodePos.x, nodePos.y);
-                                } else {
-                                    const edgeMaxY = Math.max(fromPos.y + fromPos.height, toPos.y + toPos.height);
-                                    const nodeTop = nodePos.y - collisionMargin;
-                                    const shiftAmount = edgeMaxY - nodeTop + baseSpacing;
-                                    if (window.DEBUG_CONNECTIONS) {
-                                        console.log('[DashedNodeEdgeCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to edge ' + conn.from + '->' + conn.to);
-                                    }
-                                    nodePos.y += shiftAmount;
-                                    setNodePosition(element, nodePos.x, nodePos.y);
+                                if (window.DEBUG_CONNECTIONS) {
+                                    console.log('[DashedNodeEdgeCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to edge ' + conn.from + '->' + conn.to);
                                 }
+
+                                if (isVertical) {
+                                    nodePos.x += shiftAmount;
+                                } else {
+                                    nodePos.y += shiftAmount;
+                                }
+                                setNodePosition(element, nodePos.x, nodePos.y);
                                 hasCollision = true;
                             }
                         });
@@ -361,33 +369,31 @@ function getCollisionResolvers() {
                         const element = document.getElementById(node.id);
                         if (!element || element.classList.contains('hidden')) return;
 
-                        const nodeLeft = nodePos.x;
-                        const nodeTop = nodePos.y;
-                        const nodeRight = nodePos.x + nodePos.width;
-                        const nodeBottom = nodePos.y + nodePos.height;
+                        const nodeBounds = {
+                            left: nodePos.x - collisionMargin,
+                            right: nodePos.x + nodePos.width + collisionMargin,
+                            top: nodePos.y - collisionMargin,
+                            bottom: nodePos.y + nodePos.height + collisionMargin
+                        };
 
                         predictedLabelBounds.forEach(label => {
                             if (label.to === node.id) return;
 
-                            const xOverlap = !(nodeRight + collisionMargin < label.left || nodeLeft - collisionMargin > label.right);
-                            const yOverlap = !(nodeBottom + collisionMargin < label.top || nodeTop - collisionMargin > label.bottom);
+                            if (checkOverlap(nodeBounds, label, isVertical)) {
+                                const shiftAmount = isVertical
+                                    ? label.right + collisionMargin - nodePos.x + baseSpacing
+                                    : label.bottom + collisionMargin - nodePos.y + baseSpacing;
 
-                            if (xOverlap && yOverlap) {
-                                if (isVertical) {
-                                    const shiftAmount = label.right + collisionMargin - nodeLeft + baseSpacing;
-                                    if (window.DEBUG_CONNECTIONS) {
-                                        console.log('[NodeLabelCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to label from ' + label.from + ' to ' + label.to);
-                                    }
-                                    nodePos.x += shiftAmount;
-                                    setNodePosition(element, nodePos.x, nodePos.y);
-                                } else {
-                                    const shiftAmount = label.bottom + collisionMargin - nodeTop + baseSpacing;
-                                    if (window.DEBUG_CONNECTIONS) {
-                                        console.log('[NodeLabelCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to label from ' + label.from + ' to ' + label.to);
-                                    }
-                                    nodePos.y += shiftAmount;
-                                    setNodePosition(element, nodePos.x, nodePos.y);
+                                if (window.DEBUG_CONNECTIONS) {
+                                    console.log('[NodeLabelCollision] Shifting ' + node.id + ' by ' + shiftAmount + 'px due to label from ' + label.from + ' to ' + label.to);
                                 }
+
+                                if (isVertical) {
+                                    nodePos.x += shiftAmount;
+                                } else {
+                                    nodePos.y += shiftAmount;
+                                }
+                                setNodePosition(element, nodePos.x, nodePos.y);
                                 hasCollision = true;
                             }
                         });
