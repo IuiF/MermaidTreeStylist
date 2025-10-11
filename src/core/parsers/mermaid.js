@@ -4,43 +4,37 @@ function parseMermaidNodes(content) {
     const nodeMap = new Map();
     const lines = content.split('\n');
 
-    // ノード定義パターン（様々な形状に対応）
-    // より複雑なパターンを先に、シンプルなパターンを後に配置
-    const nodePatterns = [
-        // 引用符付き複雑な形状（長いパターンを先に）
-        /([a-zA-Z0-9_-]+)\s*\(\[\s*"([^"]+)"\s*\]\)/,  // Stadium
-        /([a-zA-Z0-9_-]+)\s*\[\[\s*"([^"]+)"\s*\]\]/,  // Subroutine
-        /([a-zA-Z0-9_-]+)\s*\[\(\s*"([^"]+)"\s*\)\]/,  // Cylinder
-        /([a-zA-Z0-9_-]+)\s*\(\(\s*"([^"]+)"\s*\)\)/,  // Circle
-        /([a-zA-Z0-9_-]+)\s*\{\{\s*"([^"]+)"\s*\}\}/,  // Hexagon
-        /([a-zA-Z0-9_-]+)\s*\[\/\s*"([^"]+)"\s*\/\]/,  // Trapezoid
-        /([a-zA-Z0-9_-]+)\s*\[\\\s*"([^"]+)"\s*\\\]/,  // Reverse Trapezoid
-        /([a-zA-Z0-9_-]+)\s*\[\/\s*"([^"]+)"\s*\\\]/,  // Parallelogram
-        /([a-zA-Z0-9_-]+)\s*\[\\\s*"([^"]+)"\s*\/\]/,  // Reverse Parallelogram
-        /([a-zA-Z0-9_-]+)\s*>\s*"([^"]+)"\s*\]/,        // Asymmetric
+    // パターンテンプレート定義（引用符の有無を動的に処理）
+    function createPattern(start, end, quoted) {
+        const content = quoted ? '"([^"]+)"' : '([^' + end.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ']+)';
+        return new RegExp(`([a-zA-Z0-9_-]+)\\s*${start.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*${content}\\s*${end.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+    }
 
-        // 引用符付きシンプルな形状
-        /([a-zA-Z0-9_-]+)\s*\[\s*"([^"]+)"\s*\]/,  // Square
-        /([a-zA-Z0-9_-]+)\s*\(\s*"([^"]+)"\s*\)/,  // Round
-        /([a-zA-Z0-9_-]+)\s*\{\s*"([^"]+)"\s*\}/,  // Diamond
-
-        // 引用符なし複雑な形状（長いパターンを先に）
-        /([a-zA-Z0-9_-]+)\s*\(\[\s*([^\]]+)\s*\]\)/,  // Stadium
-        /([a-zA-Z0-9_-]+)\s*\[\[\s*([^\]]+)\s*\]\]/,  // Subroutine
-        /([a-zA-Z0-9_-]+)\s*\[\(\s*([^\)]+)\s*\)\]/,  // Cylinder
-        /([a-zA-Z0-9_-]+)\s*\(\(\s*([^\)]+)\s*\)\)/,  // Circle
-        /([a-zA-Z0-9_-]+)\s*\{\{\s*([^\}]+)\s*\}\}/,  // Hexagon
-        /([a-zA-Z0-9_-]+)\s*\[\/\s*([^\/\]]+)\s*\/\]/,  // Trapezoid
-        /([a-zA-Z0-9_-]+)\s*\[\\\s*([^\\\]]+)\s*\\\]/,  // Reverse Trapezoid
-        /([a-zA-Z0-9_-]+)\s*\[\/\s*([^\\\]]+)\s*\\\]/,  // Parallelogram
-        /([a-zA-Z0-9_-]+)\s*\[\\\s*([^\/\]]+)\s*\/\]/,  // Reverse Parallelogram
-        /([a-zA-Z0-9_-]+)\s*>\s*([^\]]+)\s*\]/,        // Asymmetric
-
-        // 引用符なしシンプルな形状（最後に）
-        /([a-zA-Z0-9_-]+)\s*\[\s*([^\]]+)\s*\]/,  // Square
-        /([a-zA-Z0-9_-]+)\s*\(\s*([^\)]+)\s*\)/,  // Round
-        /([a-zA-Z0-9_-]+)\s*\{\s*([^\}]+)\s*\}/   // Diamond
+    // 形状パターンのテンプレート（長いものから順に）
+    const shapeTemplates = [
+        { start: '([', end: '])', name: 'Stadium' },
+        { start: '[[', end: ']]', name: 'Subroutine' },
+        { start: '[(', end: ')]', name: 'Cylinder' },
+        { start: '((', end: '))', name: 'Circle' },
+        { start: '{{', end: '}}', name: 'Hexagon' },
+        { start: '[/', end: '/]', name: 'Trapezoid' },
+        { start: '[\\', end: '\\]', name: 'Reverse Trapezoid' },
+        { start: '[/', end: '\\]', name: 'Parallelogram' },
+        { start: '[\\', end: '/]', name: 'Reverse Parallelogram' },
+        { start: '>', end: ']', name: 'Asymmetric' },
+        { start: '[', end: ']', name: 'Square' },
+        { start: '(', end: ')', name: 'Round' },
+        { start: '{', end: '}', name: 'Diamond' }
     ];
+
+    // 引用符付き→引用符なしの順でパターン生成
+    const nodePatterns = [];
+    shapeTemplates.forEach(template => {
+        nodePatterns.push(createPattern(template.start, template.end, true));
+    });
+    shapeTemplates.forEach(template => {
+        nodePatterns.push(createPattern(template.start, template.end, false));
+    });
 
     for (const line of lines) {
         const trimmedLine = line.trim();
@@ -203,49 +197,43 @@ function parseMermaidConnections(content) {
             }
         }
 
-        // 従来の接続パターン（様々なタイプに対応）
-        const connectionPatterns = [
-            // パイプ記号でラベル（引用符付き）
-            { pattern: /^([a-zA-Z0-9_-]+)\s*-->\s*\|\s*"([^"]+)"\s*\|\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*---\s*\|\s*"([^"]+)"\s*\|\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*\.->\s*\|\s*"([^"]+)"\s*\|\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*\.-\s*\|\s*"([^"]+)"\s*\|\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*==>\s*\|\s*"([^"]+)"\s*\|\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*===\s*\|\s*"([^"]+)"\s*\|\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
+        // 接続パターン生成関数
+        function createConnectionPattern(arrow, labelType, quoted) {
+            const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            if (labelType === 'pipe') {
+                const label = quoted ? '"([^"]+)"' : '([^|]+)';
+                return { pattern: new RegExp(`^([a-zA-Z0-9_-]+)\\s*${esc(arrow)}\\s*\\|\\s*${label}\\s*\\|\\s*([a-zA-Z0-9_-]+)`), hasLabel: true };
+            } else if (labelType === 'wrap') {
+                const prefix = arrow.substring(0, 2);
+                const suffix = arrow.substring(2);
+                const label = quoted ? '"([^"]+)"' : `([^${esc(prefix[0])}]+)`;
+                return { pattern: new RegExp(`^([a-zA-Z0-9_-]+)\\s*${esc(prefix)}\\s*${label}\\s*${esc(suffix)}\\s*([a-zA-Z0-9_-]+)`), hasLabel: true };
+            } else {
+                return { pattern: new RegExp(`^([a-zA-Z0-9_-]+)\\s*${esc(arrow)}\\s*([a-zA-Z0-9_-]+)`), hasLabel: false };
+            }
+        }
 
-            // パイプ記号でラベル（引用符なし）
-            { pattern: /^([a-zA-Z0-9_-]+)\s*-->\s*\|\s*([^|]+)\s*\|\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*---\s*\|\s*([^|]+)\s*\|\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*\.->\s*\|\s*([^|]+)\s*\|\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*\.-\s*\|\s*([^|]+)\s*\|\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*==>\s*\|\s*([^|]+)\s*\|\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*===\s*\|\s*([^|]+)\s*\|\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
+        // 接続タイプ定義
+        const arrowTypes = ['-->', '---', '.->', '.-', '==>', '===', '~~~'];
+        const labelArrows = ['-->', '---', '.->', '.-', '==>', '==='];
 
-            // ハイフン/ドット/イコールで囲むラベル（引用符付き）
-            { pattern: /^([a-zA-Z0-9_-]+)\s*--\s*"([^"]+)"\s*-->\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*--\s*"([^"]+)"\s*---\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*-\.\s*"([^"]+)"\s*\.->\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*-\.\s*"([^"]+)"\s*\.-\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*==\s*"([^"]+)"\s*==>\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*==\s*"([^"]+)"\s*===\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-
-            // ハイフン/ドット/イコールで囲むラベル（引用符なし）
-            { pattern: /^([a-zA-Z0-9_-]+)\s*--\s*([^-]+)\s*-->\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*--\s*([^-]+)\s*---\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*-\.\s*([^\.]+)\s*\.->\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*-\.\s*([^\.]+)\s*\.-\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*==\s*([^=]+)\s*==>\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*==\s*([^=]+)\s*===\s*([a-zA-Z0-9_-]+)/, hasLabel: true },
-
-            // シンプルな接続（ラベルなし）
-            { pattern: /^([a-zA-Z0-9_-]+)\s*-->\s*([a-zA-Z0-9_-]+)/, hasLabel: false },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*---\s*([a-zA-Z0-9_-]+)/, hasLabel: false },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*\.->\s*([a-zA-Z0-9_-]+)/, hasLabel: false },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*\.-\s*([a-zA-Z0-9_-]+)/, hasLabel: false },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*==>\s*([a-zA-Z0-9_-]+)/, hasLabel: false },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*===\s*([a-zA-Z0-9_-]+)/, hasLabel: false },
-            { pattern: /^([a-zA-Z0-9_-]+)\s*~~~\s*([a-zA-Z0-9_-]+)/, hasLabel: false }
-        ];
+        // パターン生成（優先順位: パイプラベル > ラップラベル > ラベルなし）
+        const connectionPatterns = [];
+        labelArrows.forEach(arrow => {
+            connectionPatterns.push(createConnectionPattern(arrow, 'pipe', true));
+        });
+        labelArrows.forEach(arrow => {
+            connectionPatterns.push(createConnectionPattern(arrow, 'pipe', false));
+        });
+        labelArrows.forEach(arrow => {
+            connectionPatterns.push(createConnectionPattern(arrow, 'wrap', true));
+        });
+        labelArrows.forEach(arrow => {
+            connectionPatterns.push(createConnectionPattern(arrow, 'wrap', false));
+        });
+        arrowTypes.forEach(arrow => {
+            connectionPatterns.push(createConnectionPattern(arrow, 'none', false));
+        });
 
         for (const patternObj of connectionPatterns) {
             const match = trimmedLine.match(patternObj.pattern);
