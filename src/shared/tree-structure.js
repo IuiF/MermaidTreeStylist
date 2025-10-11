@@ -34,7 +34,7 @@ function getTreeStructureAnalyzer() {
                 queue.push(rootNode.id);
             });
 
-            // BFSで階層を計算（複数回訪問を許可し、より深い階層を採用）
+            // BFSで階層を計算（複数回訪問を許可し、より浅い階層を採用）
             let processed = 0;
             const maxIterations = nodes.length * nodes.length;
 
@@ -48,8 +48,8 @@ function getTreeStructureAnalyzer() {
                     const newLevel = currentLevel + 1;
                     const existingLevel = nodeLevel.get(childId);
 
-                    // より深い階層が見つかった場合、または未設定の場合は更新
-                    if (existingLevel === undefined || newLevel > existingLevel) {
+                    // より浅い階層が見つかった場合、または未設定の場合は更新
+                    if (existingLevel === undefined || newLevel < existingLevel) {
                         nodeLevel.set(childId, newLevel);
                         queue.push(childId);
                     }
