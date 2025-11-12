@@ -24,6 +24,13 @@ function buildEmbeddedCode() {
     code += '// バリデーター\n';
     if (validateTreeStructureMatch) code += validateTreeStructureMatch[0] + '\n\n';
 
+    // 2.5. createDashedNodesAndEdges (main.jsから)
+    const mainContent = fs.readFileSync('./cli/main.js', 'utf8');
+    const createDashedNodesAndEdgesMatch = mainContent.match(/function createDashedNodesAndEdges[\s\S]*?(?=\n\/\/ Main function)/);
+
+    code += '// バックエッジ処理\n';
+    if (createDashedNodesAndEdgesMatch) code += createDashedNodesAndEdgesMatch[0] + '\n\n';
+
     // 3. 各getterファイルの内容を取得（module.exportsを削除）
     const getBaseTemplate = fs.readFileSync('./src/templates/base.js', 'utf8')
         .replace(/module\.exports = \{[^}]+\};?/g, '');

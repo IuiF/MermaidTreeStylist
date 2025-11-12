@@ -153,11 +153,27 @@ ${EMBEDDED_CODE}
                 // パース
                 const nodes = parseMermaidNodes(mermaidContent);
                 const connections = parseMermaidConnections(mermaidContent);
+                const styles = parseMermaidStyles(mermaidContent);
+                const { classDefs, classAssignments } = parseMermaidClassDefs(mermaidContent);
 
                 if (nodes.length === 0) {
                     showError('ノードが見つかりませんでした');
                     return;
                 }
+
+                // クラス割り当てをノードにマージ
+                nodes.forEach(node => {
+                    if (classAssignments[node.id]) {
+                        if (!node.classes) {
+                            node.classes = [];
+                        }
+                        classAssignments[node.id].forEach(className => {
+                            if (!node.classes.includes(className)) {
+                                node.classes.push(className);
+                            }
+                        });
+                    }
+                });
 
                 // バリデーション
                 const validation = validateTreeStructure(nodes, connections);
@@ -166,7 +182,26 @@ ${EMBEDDED_CODE}
                 if (!validation.isValid) {
                     html = generateErrorHTML(validation.errors);
                 } else {
-                    html = generateHTML(nodes, connections);
+                    // バックエッジを除いた通常のエッジ
+                    const regularConnections = connections.filter(conn => {
+                        return !validation.backEdges.some(be => be.from === conn.from && be.to === conn.to);
+                    });
+
+                    // バックエッジ用の点線エッジと点線ノードを作成
+                    const { dashedNodes, dashedEdges } = createDashedNodesAndEdges(
+                        nodes,
+                        regularConnections,
+                        validation.backEdges
+                    );
+
+                    html = generateHTML(
+                        nodes,
+                        regularConnections,
+                        styles,
+                        classDefs,
+                        dashedNodes,
+                        dashedEdges
+                    );
                 }
 
                 // ダウンロード
