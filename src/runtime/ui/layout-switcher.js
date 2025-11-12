@@ -7,10 +7,6 @@ function getLayoutSwitcher() {
         function switchLayout(layoutType) {
             currentLayout = layoutType;
 
-            // Update button states
-            document.getElementById('verticalBtn').classList.toggle('active', layoutType === 'vertical');
-            document.getElementById('horizontalBtn').classList.toggle('active', layoutType === 'horizontal');
-
             // Apply layout
             currentNodePositions = redrawHelpers.recalculateLayout(layoutType);
 
