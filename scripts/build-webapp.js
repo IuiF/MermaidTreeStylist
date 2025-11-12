@@ -4,32 +4,68 @@ const fs = require('fs');
 function buildEmbeddedCode() {
     let code = '\n';
 
+    // 関数を抽出するヘルパー関数
+    function extractFunction(content, functionName) {
+        const startPattern = new RegExp(`function ${functionName}\\([^)]*\\)\\s*\\{`);
+        const match = content.match(startPattern);
+        if (!match) return null;
+
+        const startIndex = match.index;
+
+        // 次の関数定義またはmodule.exportsを探す
+        const nextFunctionPattern = /\n(?:function |module\.exports)/g;
+        nextFunctionPattern.lastIndex = startIndex + match[0].length;
+        const nextMatch = nextFunctionPattern.exec(content);
+
+        let endIndex;
+        if (nextMatch) {
+            endIndex = nextMatch.index;
+        } else {
+            endIndex = content.length;
+        }
+
+        let extracted = content.substring(startIndex, endIndex).trim();
+
+        // 末尾の空行とコメント行を削除
+        const lines = extracted.split('\n');
+        while (lines.length > 0) {
+            const lastLine = lines[lines.length - 1].trim();
+            if (lastLine === '' || lastLine.startsWith('//')) {
+                lines.pop();
+            } else {
+                break;
+            }
+        }
+
+        return lines.join('\n');
+    }
+
     // 1. パーサー (parseMermaidNodes, parseMermaidConnections, parseMermaidStyles, parseMermaidClassDefs)
     const parserContent = fs.readFileSync('./src/core/parsers/mermaid.js', 'utf8');
-    const parseMermaidNodesMatch = parserContent.match(/function parseMermaidNodes[\s\S]*?(?=\n\/\/ Parse Mermaid connections|function parse)/);
-    const parseMermaidConnectionsMatch = parserContent.match(/function parseMermaidConnections[\s\S]*?(?=\n\/\/ Parse Mermaid style|function parse)/);
-    const parseMermaidStylesMatch = parserContent.match(/function parseMermaidStyles[\s\S]*?(?=\n\/\/ Parse Mermaid class|function parse)/);
-    const parseMermaidClassDefsMatch = parserContent.match(/function parseMermaidClassDefs[\s\S]*?(?=\nmodule\.exports)/);
+    const parseMermaidNodesCode = extractFunction(parserContent, 'parseMermaidNodes');
+    const parseMermaidConnectionsCode = extractFunction(parserContent, 'parseMermaidConnections');
+    const parseMermaidStylesCode = extractFunction(parserContent, 'parseMermaidStyles');
+    const parseMermaidClassDefsCode = extractFunction(parserContent, 'parseMermaidClassDefs');
 
     code += '// パーサー\n';
-    if (parseMermaidNodesMatch) code += parseMermaidNodesMatch[0] + '\n\n';
-    if (parseMermaidConnectionsMatch) code += parseMermaidConnectionsMatch[0] + '\n\n';
-    if (parseMermaidStylesMatch) code += parseMermaidStylesMatch[0] + '\n\n';
-    if (parseMermaidClassDefsMatch) code += parseMermaidClassDefsMatch[0] + '\n\n';
+    if (parseMermaidNodesCode) code += parseMermaidNodesCode + '\n\n';
+    if (parseMermaidConnectionsCode) code += parseMermaidConnectionsCode + '\n\n';
+    if (parseMermaidStylesCode) code += parseMermaidStylesCode + '\n\n';
+    if (parseMermaidClassDefsCode) code += parseMermaidClassDefsCode + '\n\n';
 
     // 2. バリデーター (validateTreeStructure)
     const validatorContent = fs.readFileSync('./src/core/validators/tree-validator.js', 'utf8');
-    const validateTreeStructureMatch = validatorContent.match(/function validateTreeStructure[\s\S]*?(?=\nmodule\.exports)/);
+    const validateTreeStructureCode = extractFunction(validatorContent, 'validateTreeStructure');
 
     code += '// バリデーター\n';
-    if (validateTreeStructureMatch) code += validateTreeStructureMatch[0] + '\n\n';
+    if (validateTreeStructureCode) code += validateTreeStructureCode + '\n\n';
 
     // 2.5. createDashedNodesAndEdges (main.jsから)
     const mainContent = fs.readFileSync('./cli/main.js', 'utf8');
-    const createDashedNodesAndEdgesMatch = mainContent.match(/function createDashedNodesAndEdges[\s\S]*?(?=\n\/\/ Main function)/);
+    const createDashedNodesAndEdgesCode = extractFunction(mainContent, 'createDashedNodesAndEdges');
 
     code += '// バックエッジ処理\n';
-    if (createDashedNodesAndEdgesMatch) code += createDashedNodesAndEdgesMatch[0] + '\n\n';
+    if (createDashedNodesAndEdgesCode) code += createDashedNodesAndEdgesCode + '\n\n';
 
     // 3. 各getterファイルの内容を取得（module.exportsを削除）
     const getBaseTemplate = fs.readFileSync('./src/templates/base.js', 'utf8')
@@ -160,31 +196,6 @@ function buildEmbeddedCode() {
 
     // 4. html.jsのgenerateHTML, getJavaScriptContent, generateErrorHTML
     const htmlContent = fs.readFileSync('./src/core/generators/html.js', 'utf8');
-
-    // 関数を抽出（次の関数定義またはmodule.exportsまで）
-    function extractFunction(content, functionName) {
-        const startPattern = new RegExp(`function ${functionName}\\([^)]*\\)\\s*\\{`);
-        const match = content.match(startPattern);
-        if (!match) return null;
-
-        const startIndex = match.index;
-
-        // 次の関数定義またはmodule.exportsを探す
-        const nextFunctionPattern = /\n(?:function |module\.exports)/g;
-        nextFunctionPattern.lastIndex = startIndex + match[0].length;
-        const nextMatch = nextFunctionPattern.exec(content);
-
-        let endIndex;
-        if (nextMatch) {
-            // 次の関数の直前までを取得（空行を1つ残す）
-            endIndex = nextMatch.index;
-        } else {
-            // 最後の関数の場合はファイル末尾まで
-            endIndex = content.length;
-        }
-
-        return content.substring(startIndex, endIndex).trim();
-    }
 
     const generateHTMLCode = extractFunction(htmlContent, 'generateHTML');
     const getJavaScriptContentCode = extractFunction(htmlContent, 'getJavaScriptContent');
