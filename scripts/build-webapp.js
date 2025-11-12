@@ -102,12 +102,12 @@ function buildEmbeddedCode() {
         .replace(/module\.exports = \{[^}]+\};?/g, '');
     let getConnectionRenderer = fs.readFileSync('./src/runtime/rendering/connections/renderer.js', 'utf8')
         .replace(/module\.exports = \{[^}]+\};?/g, '');
-    // renderer.jsのrequire文を削除
+    // renderer.jsのrequire文を削除し、getter関数呼び出しに置き換え
     getConnectionRenderer = getConnectionRenderer
         .replace(/\s*const connectionLabels = require\('\.\/labels'\)\.getConnectionLabels\(\);\s*/g, '\n')
         .replace(/\s*const verticalSegmentCalculator = require\('\.\/vertical-segment-calculator'\)\.getVerticalSegmentCalculator\(\);\s*/g, '\n')
         .replace(/\s*const edgeCrossingDetector = require\('\.\/edge-crossing-detector'\)\.getEdgeCrossingDetector\(\);\s*/g, '\n')
-        .replace(/return connectionLabels \+ verticalSegmentCalculator \+ edgeCrossingDetector \+ `/g, 'return `');
+        .replace(/return connectionLabels \+ verticalSegmentCalculator \+ edgeCrossingDetector \+ `/g, 'return getConnectionLabels() + getVerticalSegmentCalculator() + getEdgeCrossingDetector() + `');
     const getRedrawHelpers = fs.readFileSync('./src/runtime/rendering/redraw-helpers.js', 'utf8')
         .replace(/module\.exports = \{[^}]+\};?/g, '');
     const getShadowManager = fs.readFileSync('./src/runtime/rendering/effects/shadow-manager.js', 'utf8')
@@ -138,13 +138,13 @@ function buildEmbeddedCode() {
         .replace(/module\.exports = \{[^}]+\};?/g, '');
     let getLayoutEngine = fs.readFileSync('./src/core/layout/layout-engine.js', 'utf8')
         .replace(/module\.exports = \{[^}]+\};?/g, '');
-    // layout-engine.jsのrequire文を削除
+    // layout-engine.jsのrequire文を削除し、getter関数呼び出しに置き換え
     getLayoutEngine = getLayoutEngine
         .replace(/\s*const types = require\('\.\/types'\)\.getTypes\(\);\s*/g, '\n')
         .replace(/\s*const nodePlacer = require\('\.\/node-placer'\)\.getNodePlacer\(\);\s*/g, '\n')
         .replace(/\s*const collisionResolver = require\('\.\/collision-resolver'\)\.getCollisionResolver\(\);\s*/g, '\n')
         .replace(/\s*const edgeRouter = require\('\.\/edge-router'\)\.getEdgeRouter\(\);\s*/g, '\n')
-        .replace(/return types \+ nodePlacer \+ collisionResolver \+ edgeRouter \+ `/g, 'return `');
+        .replace(/return types \+ nodePlacer \+ collisionResolver \+ edgeRouter \+ `/g, 'return getTypes() + getNodePlacer() + getCollisionResolver() + getEdgeRouter() + `');
 
     code += '// テンプレートとユーティリティ\n';
     code += getBaseTemplate + '\n';
