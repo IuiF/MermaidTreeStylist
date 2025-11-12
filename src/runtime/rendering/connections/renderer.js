@@ -279,10 +279,9 @@ function getConnectionRenderer() {
                 return svgLayer;
             }
 
-            // Phase 1: ラベル描画
-            function renderAllLabels(connections, svgLayer) {
-                // 表示されるエッジのみをフィルタリング
-                const visibleConnections = connections.filter(conn => {
+            // 表示されるエッジのみをフィルタリング
+            function filterVisibleConnections(connections) {
+                return connections.filter(conn => {
                     const fromElement = svgHelpers.getNodeElement(conn.from);
                     const toElement = svgHelpers.getNodeElement(conn.to);
                     if (!areNodesVisible(fromElement, toElement)) {
@@ -295,7 +294,10 @@ function getConnectionRenderer() {
                     }
                     return true;
                 });
+            }
 
+            // Phase 1: ラベル描画
+            function renderAllLabels(visibleConnections, svgLayer) {
                 // 表示されるエッジのみでラベルを描画
                 visibleConnections.forEach(conn => {
                     const toElement = svgHelpers.getNodeElement(conn.to);
@@ -522,10 +524,14 @@ function getConnectionRenderer() {
             const svgLayer = initializeAndClearSVGLayer();
             if (!svgLayer) return;
 
-            renderAllLabels(connections, svgLayer);
+            // 表示されているエッジのみをフィルタリング
+            const visibleConnections = filterVisibleConnections(connections);
+
+            renderAllLabels(visibleConnections, svgLayer);
             const labelBounds = getAllLabelBounds();
 
-            const layoutData = calculateEdgeLayout(connections, labelBounds);
+            // 表示されているエッジのみでレイアウト計算と交差検出を行う
+            const layoutData = calculateEdgeLayout(visibleConnections, labelBounds);
 
             layoutData.edgeInfos.forEach(edgeInfo => {
                 renderSingleEdge(edgeInfo, layoutData, svgLayer, labelBounds);
