@@ -25,6 +25,16 @@ function getCollectors() {
                         return;
                     }
 
+                    // 非表示ノードのエッジはスキップ
+                    if (fromElement.classList.contains('hidden') || toElement.classList.contains('hidden')) {
+                        return;
+                    }
+
+                    // collapseManagerで折りたたみ状態をチェック
+                    if (typeof collapseManager !== 'undefined' && !collapseManager.isEdgeVisible(conn)) {
+                        return;
+                    }
+
                     const fromPos = svgHelpers.getNodePosition(fromElement);
                     const fromDim = svgHelpers.getNodeDimensions(fromElement);
                     const toPos = svgHelpers.getNodePosition(toElement);
