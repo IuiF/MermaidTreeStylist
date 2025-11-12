@@ -45,6 +45,9 @@ function getCollapseManager() {
                     console.log('recalculateLayout called');
                 }
                 requestAnimationFrame(() => {
+                    // 可視性を先に更新してから再描画
+                    this.updateVisibility();
+
                     currentNodePositions = redrawHelpers.recalculateLayout(currentLayout);
 
                     if (window.DEBUG_CONNECTIONS) {
@@ -52,7 +55,6 @@ function getCollapseManager() {
                     }
                     redrawHelpers.redrawConnectionsWithHighlights(allConnections, currentNodePositions);
                     shadowManager.updatePositions(this.collapsedNodes);
-                    this.updateVisibility();
 
                     // 座標を更新
                     redrawHelpers.updateViewport({ fitToContent: false });

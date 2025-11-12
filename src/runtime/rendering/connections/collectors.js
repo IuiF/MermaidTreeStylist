@@ -35,6 +35,11 @@ function getCollectors() {
                         return;
                     }
 
+                    // 点線エッジ（バックエッジ）は交差検出の対象外
+                    if (conn.isDashed) {
+                        return;
+                    }
+
                     const fromPos = svgHelpers.getNodePosition(fromElement);
                     const fromDim = svgHelpers.getNodeDimensions(fromElement);
                     const toPos = svgHelpers.getNodePosition(toElement);
