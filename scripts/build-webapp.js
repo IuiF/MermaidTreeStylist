@@ -167,7 +167,12 @@ function buildEmbeddedCode() {
     code += getConnectionLabels + '\n';
     code += getVerticalSegmentCalculator + '\n';
     code += getEdgeCrossingDetector + '\n';
-    code += getConnectionRenderer + '\n\n';
+    code += getConnectionRenderer + '\n';
+    // getter関数を呼び出して中身を展開
+    code += 'eval(getConnectionLabels());\n';
+    code += 'eval(getVerticalSegmentCalculator());\n';
+    code += 'eval(getEdgeCrossingDetector());\n';
+    code += 'eval(getConnectionRenderer());\n\n';
 
     code += '// レンダリング機能\n';
     code += getRedrawHelpers + '\n';
@@ -192,7 +197,13 @@ function buildEmbeddedCode() {
     code += getNodePlacer + '\n';
     code += getCollisionResolver + '\n';
     code += getEdgeRouter + '\n';
-    code += getLayoutEngine + '\n\n';
+    code += getLayoutEngine + '\n';
+    // getter関数を呼び出して中身を展開
+    code += 'eval(getTypes());\n';
+    code += 'eval(getNodePlacer());\n';
+    code += 'eval(getCollisionResolver());\n';
+    code += 'eval(getEdgeRouter());\n';
+    code += 'eval(getLayoutEngine());\n\n';
 
     // 4. html.jsのgenerateHTML, getJavaScriptContent, generateErrorHTML
     const htmlContent = fs.readFileSync('./src/core/generators/html.js', 'utf8');
