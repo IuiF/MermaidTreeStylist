@@ -44,7 +44,7 @@ function getConnectionRenderer() {
         }
 
         // 依存: svgHelpers (svg-helpers.js), getNodePosition, getNodeDimensions (layout-utils.js)
-        let useCurvedLines = true;
+        let useCurvedLines = false;
 
         window.toggleLineStyle = function() {
             useCurvedLines = !useCurvedLines;
