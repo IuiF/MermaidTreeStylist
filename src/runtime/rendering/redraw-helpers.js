@@ -81,9 +81,15 @@ function getRedrawHelpers() {
 
                 const treeStructure = analyzeTreeStructure(allNodes, allConnections, dashedNodes);
 
+                // 可視エッジのみをフィルタリング
+                let visibleConnections = allConnections;
+                if (typeof collapseManager !== 'undefined') {
+                    visibleConnections = allConnections.filter(conn => collapseManager.isEdgeVisible(conn));
+                }
+
                 const input = {
                     nodes: allNodes,
-                    connections: allConnections,
+                    connections: visibleConnections,
                     treeStructure: treeStructure,
                     nodeWidths: nodeWidths,
                     dashedNodes: dashedNodeSet

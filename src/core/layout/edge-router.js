@@ -84,8 +84,13 @@ function getEdgeRouter() {
                 }
             });
 
-            // 全エッジの組み合わせをチェック
-            const edgeKeys = Array.from(edgeRoutes.keys());
+            // 全エッジの組み合わせをチェック（点線エッジは除外）
+            const edgeKeys = Array.from(edgeRoutes.keys()).filter(key => {
+                // 対応するconnectionを探して点線かチェック
+                const parts = key.split('->');
+                const conn = connections.find(c => c.from === parts[0] && c.to === parts[1]);
+                return !conn || !conn.isDashed;
+            });
 
             for (let i = 0; i < edgeKeys.length; i++) {
                 const key1 = edgeKeys[i];
