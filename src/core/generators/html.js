@@ -1,28 +1,5 @@
 const { getBaseTemplate } = require('../../templates/base');
-const { getLayoutUtils } = require('../../shared/layout-utils');
-const { getTreeStructureAnalyzer } = require('../../shared/tree-structure');
-const { getSVGHelpers } = require('../../shared/svg-helpers');
-const { getVerticalLayout } = require('../layouts/vertical-layout');
-const { getConnectionConstants } = require('../../runtime/rendering/connections/constants');
-const { getConnectionUtils } = require('../../runtime/rendering/connections/utils');
-const { getCollectors } = require('../../runtime/rendering/connections/collectors');
-const { getDepthUtils } = require('../../runtime/rendering/connections/depth-utils');
-const { getPathYAdjuster } = require('../../runtime/rendering/connections/path-y-adjuster');
-const { getPathGenerator } = require('../../runtime/rendering/connections/path-generator');
-const { getEdgeSpacingCalculator } = require('../../runtime/rendering/connections/edge-spacing-calculator');
-const { getCollisionUtils } = require('../../runtime/rendering/connections/collision-utils');
-const { getConnectionRenderer } = require('../../runtime/rendering/connections/renderer');
-const { getRedrawHelpers } = require('../../runtime/rendering/redraw-helpers');
-const { getShadowManager } = require('../../runtime/rendering/effects/shadow-manager');
-const { getCollapseManager } = require('../../runtime/state/collapse-manager');
-const { getLayoutSwitcher } = require('../../runtime/ui/layout-switcher');
-const { getViewportManager } = require('../../runtime/ui/viewport-manager');
-const { getContextMenu } = require('../../runtime/ui/context-menu');
-const { getHighlightManager } = require('../../runtime/state/highlight-manager');
-const { getPathHighlighter } = require('../../runtime/state/path-highlighter');
-const { getEdgeHighlighter } = require('../../runtime/state/edge-highlighter');
-const { getRenderOrchestrator } = require('../../runtime/core/render-orchestrator');
-const { getLayoutEngine } = require('../layout/layout-engine');
+const { collectAllModules } = require('../../shared/module-collector');
 
 function generateHTML(nodes, connections, styles = {}, classDefs = {}, dashedNodes = [], dashedEdges = []) {
     const template = getBaseTemplate();
@@ -47,6 +24,12 @@ function generateHTML(nodes, connections, styles = {}, classDefs = {}, dashedNod
 }
 
 function getJavaScriptContent(nodes, connections, styles = {}, classDefs = {}, dashedNodes = [], dashedEdges = []) {
+    const runtimeModules = collectAllModules({
+        includeParser: false,
+        includeGenerator: false,
+        mode: 'require'
+    });
+
     return `    <script>
         const nodes = ${JSON.stringify(nodes)};
         const connections = ${JSON.stringify(connections)};
@@ -62,75 +45,7 @@ function getJavaScriptContent(nodes, connections, styles = {}, classDefs = {}, d
         // デバッグフラグ（ブラウザコンソールで window.DEBUG_CONNECTIONS = true で有効化）
         window.DEBUG_CONNECTIONS = false;
 
-        // Import utilities
-        ${getLayoutUtils()}
-        ${getSVGHelpers()}
-
-        // Import tree structure analyzer
-        ${getTreeStructureAnalyzer()}
-
-        // Import layouts
-        ${getVerticalLayout()}
-
-        // Import connection constants
-        ${getConnectionConstants()}
-
-        // Import connection utils
-        ${getConnectionUtils()}
-
-        // Import collectors (edge info, bounds)
-        ${getCollectors()}
-
-        // Import depth utils (calculator, offset aggregator)
-        ${getDepthUtils()}
-
-        // Import collision utils (detector, avoidance calculator)
-        ${getCollisionUtils()}
-
-        // Import path Y adjuster
-        ${getPathYAdjuster()}
-
-        // Import path generator
-        ${getPathGenerator()}
-
-        // Import edge spacing calculator
-        ${getEdgeSpacingCalculator()}
-
-        // Import connection renderer
-        ${getConnectionRenderer()}
-
-        // Import redraw helpers
-        ${getRedrawHelpers()}
-
-        // Import shadow manager
-        ${getShadowManager()}
-
-        // Import collapse manager
-        ${getCollapseManager()}
-
-        // Import layout switcher
-        ${getLayoutSwitcher()}
-
-        // Import viewport manager
-        ${getViewportManager()}
-
-        // Import highlight manager
-        ${getHighlightManager()}
-
-        // Import path highlighter
-        ${getPathHighlighter()}
-
-        // Import edge highlighter
-        ${getEdgeHighlighter()}
-
-        // Import context menu
-        ${getContextMenu()}
-
-        // Import render orchestrator
-        ${getRenderOrchestrator()}
-
-        // Import V2 layout engine
-        ${getLayoutEngine()}
+        ${runtimeModules}
 
         // スタイルを適用
         function applyNodeStyle(element, nodeId, nodeClasses) {
