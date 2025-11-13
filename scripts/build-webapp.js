@@ -6,12 +6,23 @@ const { collectAllModules } = require('../src/shared/module-collector');
 function buildEmbeddedCode() {
     const baseDir = path.join(__dirname, '..');
 
-    return collectAllModules({
+    let code = collectAllModules({
         includeParser: true,
-        includeGenerator: true,
+        includeGenerator: false,
         mode: 'filesystem',
         baseDir: baseDir
     });
+
+    // Web版用の関数を読み込んでmodule.exportsを削除
+    const browserHtmlPath = path.join(baseDir, './src/core/generators/html-browser.js');
+    const browserHtmlCode = fs.readFileSync(browserHtmlPath, 'utf8')
+        .replace(/\/\/ Web版（ブラウザ環境）用のHTML生成関数[\s\S]*?(?=function)/g, '')
+        .replace(/module\.exports = \{[\s\S]+?\};?/g, '');
+
+    code += '\n\n// Web版用のHTML生成関数\n';
+    code += browserHtmlCode;
+
+    return code;
 }
 
 // webappテンプレートを読み込み
